@@ -1,4 +1,4 @@
-# File: template_consts.py
+# File: googlethreatintelligence_consts.py
 #
 # Copyright (c) 2025 Splunk Inc.
 #
@@ -14,10 +14,10 @@
 # and limitations under the License.
 
 # API endpoints
-TEMPLATE_CONNECTIVITY_ENDPOINT = "/endpoint/to/test/connectivity"
+GOOGLETHREATINTELLIGENCE_CONNECTIVITY_ENDPOINT = "/endpoint/to/test/connectivity"
 
 # Error messages
-TEMPLATE_ERR_CONNECTIVITY_TEST = "Test Connectivity Failed"
+GOOGLETHREATINTELLIGENCE_ERR_CONNECTIVITY_TEST = "Test Connectivity Failed"
 
 # Success messages
-TEMPLATE_SUCC_CONNECTIVITY_TEST = "Test Connectivity Passed"
+GOOGLETHREATINTELLIGENCE_SUCC_CONNECTIVITY_TEST = "Test Connectivity Passed"

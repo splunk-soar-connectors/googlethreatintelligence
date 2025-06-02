@@ -15,8 +15,8 @@
         "Version X.Y.Z, Month Year"
     ],
     "utctime_updated": "2025-01-01T00:00:00.000000Z",
-    "package_name": "phantom_template",
-    "main_module": "template_connector.py",
+    "package_name": "phantom_googlethreatintelligence",
+    "main_module": "googlethreatintelligence_connector.py",
     "app_config_render": "default",
     "min_phantom_version": "6.3.0",
     "python_version": "3",
