@@ -6,7 +6,7 @@ The below details describes the configuration and usage of the GTI integration f
 
 ---
 
-## Details about On-Poll Ingestion
+## On-Poll Configuration
 
 ### Poll Now Feature
 
@@ -17,6 +17,7 @@ The **Poll Now** action retrieves the most recent 1 hour of data for all three i
 - It does **not** store a checkpoint file, meaning it will always pull the most recent 1 hour of data regardless of previous ingestions.
 - When using *Poll Now* for **IOC Stream**, duplicate artifacts may be ingested into the current day's container if those artifacts already exist, since SOAR does **not** automatically remove duplicates.
 
+### Scheduled / Interval Polling
 
 **Recommended Ingestion Interval:**  
   Set the ingestion interval to 1 hour for optimal performance and timely data updates. Please note that using very short intervals may negatively impact data ingestion efficiency and the overall performance of your instance. 
