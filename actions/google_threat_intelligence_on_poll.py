@@ -474,6 +474,7 @@ class OnPoll(BaseAction):
                 "severity": alert_severity,
                 "cef": dtm_cef,
                 "data": alert,
+                "run_automation": True,
             }
             ret_val, message, artifact_id = self._connector.save_artifact(artifact_data)
 
@@ -537,6 +538,7 @@ class OnPoll(BaseAction):
             "source_data_identifier": data_id,
             "cef": self._remove_fields(data),
             "data": data,
+            "run_automation": True,
         }
 
         # Save the artifact
@@ -690,6 +692,7 @@ class OnPoll(BaseAction):
                 },
                 "severity": artifact_severity,
                 "data": data,
+                "run_automation": True,
             }
         ]
 

@@ -76,7 +76,7 @@ class ScanPrivateUrl(BaseAction):
             ret_val, response = self._make_rest_call(
                 url=endpoint,
                 method=method,
-                headers={"x-tool": "soar", "Content-Type": "application/json"},
+                headers={"x-tool": "splunk soar", "Content-Type": "application/json"},
             )
 
             if phantom.is_fail(ret_val):
