@@ -1,2 +1,1 @@
 **Unreleased**
-* Added support for automatic execution of the automation playbook for on-poll actions
