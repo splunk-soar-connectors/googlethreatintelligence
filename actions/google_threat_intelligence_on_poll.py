@@ -1,6 +1,6 @@
 # File: google_threat_intelligence_on_poll.py
 #
-# Copyright 2025 Google LLC
+# Copyright 2025-2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -118,6 +118,7 @@ class OnPoll(BaseAction):
         else:
             # For manual polls, use the last 1 hour
             manual_time = now - (60 * 60)
+            self._connector.save_progress(f"Ingesting last 1 hour IOC events for manual polling")
             formatted_timestamp = self._connector.util.convert_unix_to_utc(manual_time)
             query_params["filter"] = f"{query_params.get('filter', '')} date:{formatted_timestamp}+".strip()
         ret_val, response = self.__make_rest_call(url=endpoint, method=method, param=query_params, limit=limit)
@@ -297,6 +298,7 @@ class OnPoll(BaseAction):
         else:
             # Last seen after value to be calculated from hours
             last_seen_after_value = self._connector.util.build_last_seen_after(hours=1)
+            self._connector.save_progress(f"Ingesting last 1 hour ASM events for manual polling")
             search_string = f"{search_string_formatted} last_seen_after:{last_seen_after_value}"
 
         self._connector.debug_print(f"[on_poll] search_string: {search_string}")
@@ -330,6 +332,9 @@ class OnPoll(BaseAction):
 
         # Check if we have data in the response
         data = response
+        if not data.get("result", None):
+            self._connector.debug_print("Search completed! No data found in response")
+            return phantom.APP_SUCCESS, None
         total_hits = data.get("result", {}).get("total_hits")
         self._connector.debug_print(f"Total ASM issue/hits fetched while polling: {total_hits}")
         if not total_hits:
@@ -415,6 +420,7 @@ class OnPoll(BaseAction):
                 self._connector.debug_print(f"Collecting alerts of last {days} days. Setting since to: {rfc3339_time}")
                 query_params["since"] = rfc3339_time
         else:
+            self._connector.save_progress(f"Ingesting last 1 hour DTM alerts for manual polling")
             self._connector.debug_print("This is a manual poll for DTM alerts, fetching alerts from the last hour.")
             historical_data_to_collect = now - timedelta(hours=1)
             rfc3339_time = historical_data_to_collect.isoformat().replace("+00:00", "Z")

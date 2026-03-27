@@ -1,9 +1,9 @@
 # Google Threat Intelligence
 
-Publisher: Google \
-Connector Version: 1.0.1 \
-Product Vendor: Google \
-Product Name: Google Threat Intelligence \
+Publisher: Google <br>
+Connector Version: 1.0.1 <br>
+Product Vendor: Google <br>
+Product Name: Google Threat Intelligence <br>
 Minimum Product Version: 6.4.0
 
 Supercharge Splunk SOAR with Google Threat Intelligence by integrating real-time IOCs, breach insights, and threat actor data from VirusTotal, Mandiant, and Google for automated, context-rich responses
@@ -174,27 +174,27 @@ VARIABLE | REQUIRED | TYPE | DESCRIPTION
 
 ### Supported Actions
 
-[test connectivity](#action-test-connectivity) - Test connectivity with Google Threat Intelligence \
-[on poll](#action-on-poll) - Ingest data from IOC Stream, DTM Alerts, and ASM Issues \
-[scan private file](#action-scan-private-file) - Privately scan and analyze a file to retrieve associated threat intelligence \
-[get ioc report](#action-get-ioc-report) - Publicly scan and fetch the report for an IP address, URL, domain, or file \
-[get comments](#action-get-comments) - Fetch comments for an IP address, URL, domain, or file \
-[get vulnerability associations](#action-get-vulnerability-associations) - Fetch vulnerabilities related to an IP address, URL, domain, or file \
-[get file sandbox report](#action-get-file-sandbox-report) - Fetch the behavior report for a given file \
-[scan private url](#action-scan-private-url) - Privately scan and analyze a URL to retrieve associated threat intelligence \
-[get curated associations](#action-get-curated-associations) - Fetch curated threat actors, malware families, campaigns, and reports for an IP address, URL, domain, or file \
-[add comment](#action-add-comment) - Add a comment to an IP address, URL, domain, or file \
-[delete comment](#action-delete-comment) - Delete a specific comment \
-[get passive dns data](#action-get-passive-dns-data) - Fetch passive DNS data for a domain or IP address \
-[get vulnerability report](#action-get-vulnerability-report) - Fetch the vulnerability report for a given vulnerability ID \
-[update dtm alert status](#action-update-dtm-alert-status) - Update the status of a DTM alert \
+[test connectivity](#action-test-connectivity) - Test connectivity with Google Threat Intelligence <br>
+[on poll](#action-on-poll) - Ingest data from IOC Stream, DTM Alerts, and ASM Issues <br>
+[scan private file](#action-scan-private-file) - Privately scan and analyze a file to retrieve associated threat intelligence <br>
+[get ioc report](#action-get-ioc-report) - Publicly scan and fetch the report for an IP address, URL, domain, or file <br>
+[get comments](#action-get-comments) - Fetch comments for an IP address, URL, domain, or file <br>
+[get vulnerability associations](#action-get-vulnerability-associations) - Fetch vulnerabilities related to an IP address, URL, domain, or file <br>
+[get file sandbox report](#action-get-file-sandbox-report) - Fetch the behavior report for a given file <br>
+[scan private url](#action-scan-private-url) - Privately scan and analyze a URL to retrieve associated threat intelligence <br>
+[get curated associations](#action-get-curated-associations) - Fetch curated threat actors, malware families, campaigns, and reports for an IP address, URL, domain, or file <br>
+[add comment](#action-add-comment) - Add a comment to an IP address, URL, domain, or file <br>
+[delete comment](#action-delete-comment) - Delete a specific comment <br>
+[get passive dns data](#action-get-passive-dns-data) - Fetch passive DNS data for a domain or IP address <br>
+[get vulnerability report](#action-get-vulnerability-report) - Fetch the vulnerability report for a given vulnerability ID <br>
+[update dtm alert status](#action-update-dtm-alert-status) - Update the status of a DTM alert <br>
 [update asm issue status](#action-update-asm-issue-status) - Update the status of an ASM issue
 
 ## action: 'test connectivity'
 
 Test connectivity with Google Threat Intelligence
 
-Type: **test** \
+Type: **test** <br>
 Read only: **True**
 
 #### Action Parameters
@@ -209,7 +209,7 @@ No Output
 
 Ingest data from IOC Stream, DTM Alerts, and ASM Issues
 
-Type: **ingest** \
+Type: **ingest** <br>
 Read only: **True**
 
 #### Action Parameters
@@ -224,7 +224,7 @@ No Output
 
 Privately scan and analyze a file to retrieve associated threat intelligence
 
-Type: **investigate** \
+Type: **investigate** <br>
 Read only: **True**
 
 #### Action Parameters
@@ -329,7 +329,7 @@ summary.total_objects_successful | numeric | | 1 |
 
 Publicly scan and fetch the report for an IP address, URL, domain, or file
 
-Type: **investigate** \
+Type: **investigate** <br>
 Read only: **True**
 
 #### Action Parameters
@@ -1398,7 +1398,7 @@ summary.total_objects_successful | numeric | | 1 |
 
 Fetch comments for an IP address, URL, domain, or file
 
-Type: **generic** \
+Type: **generic** <br>
 Read only: **True**
 
 #### Action Parameters
@@ -1441,7 +1441,7 @@ summary.total_objects_successful | numeric | | 1 |
 
 Fetch vulnerabilities related to an IP address, URL, domain, or file
 
-Type: **investigate** \
+Type: **investigate** <br>
 Read only: **True**
 
 #### Action Parameters
@@ -1725,7 +1725,7 @@ summary.total_objects_successful | numeric | | 1 |
 
 Fetch the behavior report for a given file
 
-Type: **investigate** \
+Type: **investigate** <br>
 Read only: **True**
 
 #### Action Parameters
@@ -1816,7 +1816,7 @@ summary.total_objects_successful | numeric | | 1 |
 
 Privately scan and analyze a URL to retrieve associated threat intelligence
 
-Type: **investigate** \
+Type: **investigate** <br>
 Read only: **False**
 
 #### Action Parameters
@@ -1869,7 +1869,7 @@ summary.total_objects_successful | numeric | | 1 |
 
 Fetch curated threat actors, malware families, campaigns, and reports for an IP address, URL, domain, or file
 
-Type: **investigate** \
+Type: **investigate** <br>
 Read only: **True**
 
 #### Action Parameters
@@ -2985,7 +2985,7 @@ summary.total_objects_successful | numeric | | 1 |
 
 Add a comment to an IP address, URL, domain, or file
 
-Type: **generic** \
+Type: **generic** <br>
 Read only: **False**
 
 #### Action Parameters
@@ -3024,7 +3024,7 @@ summary.total_objects_successful | numeric | | 1 |
 
 Delete a specific comment
 
-Type: **generic** \
+Type: **generic** <br>
 Read only: **False**
 
 #### Action Parameters
@@ -3049,7 +3049,7 @@ summary.total_objects_successful | numeric | | 1 |
 
 Fetch passive DNS data for a domain or IP address
 
-Type: **investigate** \
+Type: **investigate** <br>
 Read only: **True**
 
 #### Action Parameters
@@ -3089,7 +3089,7 @@ summary.total_objects_successful | numeric | | 1 |
 
 Fetch the vulnerability report for a given vulnerability ID
 
-Type: **investigate** \
+Type: **investigate** <br>
 Read only: **True**
 
 #### Action Parameters
@@ -3226,7 +3226,7 @@ summary.total_objects_successful | numeric | | 1 |
 
 Update the status of a DTM alert
 
-Type: **generic** \
+Type: **generic** <br>
 Read only: **False**
 
 #### Action Parameters
@@ -3286,7 +3286,7 @@ summary.total_objects_successful | numeric | | 1 |
 
 Update the status of an ASM issue
 
-Type: **generic** \
+Type: **generic** <br>
 Read only: **False**
 
 #### Action Parameters
@@ -3318,7 +3318,7 @@ ______________________________________________________________________
 
 Auto-generated Splunk SOAR Connector documentation.
 
-Copyright 2025 Splunk Inc.
+Copyright 2026 Splunk Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
