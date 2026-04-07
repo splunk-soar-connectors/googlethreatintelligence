@@ -1,7 +1,7 @@
 # Google Threat Intelligence
 
 Publisher: Google <br>
-Connector Version: 1.0.1 <br>
+Connector Version: 1.1.0 <br>
 Product Vendor: Google <br>
 Product Name: Google Threat Intelligence <br>
 Minimum Product Version: 6.4.0
