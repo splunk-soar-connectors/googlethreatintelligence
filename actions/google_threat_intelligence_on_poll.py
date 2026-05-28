@@ -13,12 +13,15 @@
 # either express or implied. See the License for the specific language governing permissions
 # and limitations under the License.
 
+import re
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from urllib.parse import quote, urlencode
 
 import phantom.app as phantom
 import phantom.rules as phantom_rules
+import requests
+from phantom.utils import config as ph_config
 
 import google_threat_intelligence_consts as consts
 from actions import BaseAction
@@ -48,21 +51,28 @@ class OnPoll(BaseAction):
 
         if ingestion_type == "IOC Stream":
             self._connector.debug_print("This asset is configured to ingest IOC Stream")
-            ret_val, response = self.handle_polling_IOC_events()
+            ret_val, _response = self.handle_polling_IOC_events()
             if phantom.is_fail(ret_val):
                 return self._action_result.get_status()
             return self._action_result.set_status(phantom.APP_SUCCESS)
 
         elif ingestion_type == "ASM Issues":
             self._connector.debug_print("This asset is configured to ingest ASM issues")
-            ret_val, response = self.handle_polling_ASM_events()
+            ret_val, _response = self.handle_polling_ASM_events()
             if phantom.is_fail(ret_val):
                 return self._action_result.get_status()
             return self._action_result.set_status(phantom.APP_SUCCESS)
 
         elif ingestion_type == "DTM Alerts":
             self._connector.debug_print("This asset is configured to ingest DTM alerts")
-            ret_val, response = self.handle_polling_DTM_events()
+            ret_val, _response = self.handle_polling_DTM_events()
+            if phantom.is_fail(ret_val):
+                return self._action_result.get_status()
+            return self._action_result.set_status(phantom.APP_SUCCESS)
+
+        elif ingestion_type == "RS Alerts":
+            self._connector.debug_print("This asset is configured to ingest RS alerts")
+            ret_val, _ = self.handle_polling_rs_events()
             if phantom.is_fail(ret_val):
                 return self._action_result.get_status()
             return self._action_result.set_status(phantom.APP_SUCCESS)
@@ -97,7 +107,7 @@ class OnPoll(BaseAction):
         now = int(time.time())
 
         # Get the current day string from the timestamp
-        current_day = datetime.fromtimestamp(now, tz=timezone.utc).strftime("%Y-%m-%d")
+        current_day = datetime.fromtimestamp(now, tz=UTC).strftime("%Y-%m-%d")
 
         self._state = self._connector._state
 
@@ -225,7 +235,7 @@ class OnPoll(BaseAction):
             if notification_timestamp and previous_day_container_id:
                 try:
                     # Convert timestamp to date string in YYYY-MM-DD format
-                    notification_date_str = datetime.fromtimestamp(notification_timestamp, tz=timezone.utc).strftime("%Y-%m-%d")
+                    notification_date_str = datetime.fromtimestamp(notification_timestamp, tz=UTC).strftime("%Y-%m-%d")
 
                     # If notification is from previous day and we have a previous day container, use it
                     if notification_date_str == previous_day:
@@ -392,7 +402,7 @@ class OnPoll(BaseAction):
         limit = self.config.get("limit")
 
         # Current time in UTC
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         self._is_poll_now = self._connector.is_poll_now()
 
@@ -482,7 +492,7 @@ class OnPoll(BaseAction):
                 "data": alert,
                 "run_automation": True,
             }
-            ret_val, message, artifact_id = self._connector.save_artifact(artifact_data)
+            ret_val, message, _artifact_id = self._connector.save_artifact(artifact_data)
 
             if phantom.is_fail(ret_val):
                 self._connector.debug_print(f"Failed to create artifact: {message}")
@@ -494,6 +504,319 @@ class OnPoll(BaseAction):
             self._connector.state = self._state
             self._connector.save_state(self._state)
         return phantom.APP_SUCCESS, None
+
+    def handle_polling_rs_events(self):
+        """Handle polling for RS alerts using OAuth and the Google Threat Intelligence Alerts API.
+
+        Returns:
+            tuple: (status, None)
+        """
+        limit = int(self.config.get("limit", 1000))
+        days = int(self.config.get("days", 5))
+
+        project_id = self.config.get("project-id-rs")
+        if not project_id:
+            self._action_result.set_status(phantom.APP_ERROR, consts.ERROR_MISSING_PROJECT_ID)
+            return self._action_result.get_status(), None
+
+        self._is_poll_now = self._connector.is_poll_now()
+        self._state = self._connector._state
+
+        user_filter = self.config.get("filter", "") or ""
+        cleaned_filter = self.__clean_rs_filter(user_filter)
+        self._connector.debug_print(f"RS cleaned filter: {cleaned_filter!r}")
+
+        now = datetime.now(UTC)
+        now_str = now.strftime(consts.ON_POLL_RS_TIME_FORMAT)
+
+        lower_bound, upper_bound, page_token, stored_filter = self._get_rs_time_bounds(now, now_str, days)
+
+        all_alerts, final_next_page_token, time_filter = self._fetch_rs_alerts(
+            project_id, lower_bound, upper_bound, stored_filter, cleaned_filter, limit, page_token
+        )
+        if all_alerts is None:
+            return self._action_result.get_status(), None
+
+        self._connector.debug_print(f"Total RS alerts fetched in this poll: {len(all_alerts)}")
+
+        ret_val = self._handle_response_for_rs(all_alerts)
+        if phantom.is_fail(ret_val):
+            return self._action_result.get_status(), None
+
+        if not self._is_poll_now:
+            self._save_rs_state(final_next_page_token, time_filter, upper_bound)
+
+        return phantom.APP_SUCCESS, None
+
+    def _get_rs_time_bounds(self, now, now_str, days):
+        """Determine the lower/upper time bounds and pagination state for the current RS poll.
+
+        Returns:
+            tuple: (lower_bound, upper_bound, page_token, stored_filter)
+        """
+        if self._is_poll_now:
+            lower_bound = (now - timedelta(hours=1)).strftime(consts.ON_POLL_RS_TIME_FORMAT)
+            self._connector.save_progress("Ingesting last 1 hour RS alerts for manual polling")
+            return lower_bound, now_str, None, None
+
+        rs_state = self._state.get("rs_alerts", {})
+        page_token = rs_state.get("next_page_token")
+        last_run_time = rs_state.get("last_run_time")
+        lower_bound = last_run_time if last_run_time else (now - timedelta(days=days)).strftime(consts.ON_POLL_RS_TIME_FORMAT)
+
+        if page_token:
+            upper_bound = last_run_time or now_str
+            stored_filter = rs_state.get("time_filter")
+            self._connector.debug_print(f"Resuming RS pagination with saved page token, until time: {upper_bound}")
+            if stored_filter:
+                self._connector.debug_print(f"Using stored time filter from state: {stored_filter!r}")
+            return lower_bound, upper_bound, page_token, stored_filter
+
+        upper_bound = now_str
+        self._connector.debug_print(f"RS polling from {lower_bound} to {upper_bound}")
+        return lower_bound, upper_bound, None, None
+
+    def _fetch_rs_alerts(self, project_id, lower_bound, upper_bound, stored_filter, cleaned_filter, limit, page_token):
+        """Paginate through the RS Alerts API and collect all alerts up to limit.
+
+        Returns:
+            tuple: (all_alerts, final_next_page_token, time_filter)
+                   all_alerts is None on API failure.
+        """
+        all_alerts = []
+        remaining = limit
+        current_page_token = page_token
+        final_next_page_token = None
+        time_filter = None
+
+        while remaining > 0:
+            page_size = min(remaining, 1000)
+            params = {"pageSize": page_size}
+
+            if current_page_token:
+                params["pageToken"] = current_page_token
+                time_filter = stored_filter
+            else:
+                time_filter = f'audit.update_time >= "{lower_bound}" AND audit.update_time < "{upper_bound}"'
+
+            params["filter"] = f"{time_filter} {cleaned_filter}".strip() if cleaned_filter else time_filter
+            params["orderBy"] = "audit.update_time asc"
+
+            endpoint = consts.RS_ON_POLL_ENDPOINT.format(project=project_id)
+            headers = {"Content-Type": "application/json", "x-goog-user-project": project_id}
+
+            ret_val, response = self._connector.util.make_rest_call_rs(
+                endpoint=endpoint,
+                action_result=self._action_result,
+                method="get",
+                headers=headers,
+                params=params,
+            )
+
+            if phantom.is_fail(ret_val):
+                return None, None, None
+
+            alerts = response.get("alerts", [])
+            if not alerts:
+                break
+
+            all_alerts.extend(alerts)
+            remaining -= len(alerts)
+            next_token = response.get("nextPageToken")
+
+            if not next_token:
+                break
+
+            if remaining <= 0:
+                final_next_page_token = next_token
+                break
+
+            current_page_token = next_token
+
+        return all_alerts, final_next_page_token, time_filter
+
+    def _save_rs_state(self, final_next_page_token, time_filter, upper_bound):
+        """Persist RS checkpoint state after a successful scheduled poll."""
+        rs_state = self._state.get("rs_alerts", {})
+        if final_next_page_token:
+            rs_state["next_page_token"] = final_next_page_token
+            rs_state["time_filter"] = time_filter
+        else:
+            if rs_state.pop("next_page_token", None) is not None:
+                self._connector.debug_print("No nextPageToken in API response; cleared next_page_token from state")
+            rs_state.pop("time_filter", None)
+        rs_state["last_run_time"] = upper_bound
+        self._state["rs_alerts"] = rs_state
+        self._connector.save_state(self._state)
+
+    def _handle_response_for_rs(self, alerts):
+        """Create or reuse a container per RS alert and append an artifact with CEF and raw data.
+
+        Args:
+            alerts (list): List of alert dicts from the RS API.
+
+        Returns:
+            int: phantom.APP_SUCCESS or phantom.APP_ERROR
+        """
+        if not alerts:
+            self._connector.debug_print("No RS alerts found in response")
+            return phantom.APP_SUCCESS
+
+        for alert in alerts:
+            alert_name = alert.get("name", "")
+            display_name = alert.get("displayName", alert_name)
+            alert_status = alert.get("state", "").upper()
+            alert_severity = alert.get("severityAnalysis", {}).get("severityLevel", consts.DEFAULT_SEVERITY)
+            soar_severity = consts.SEVERITY_MAPPING_RS.get(alert_severity)
+            container_status = consts.RS_ALERTS_CONTAINER_STATUS_MAPPING.get(alert_status)
+
+            self._connector.debug_print(f"State of the alert: {alert.get('state', '')}")
+
+            container_id = self._get_or_create_rs_container(alert_name, display_name)
+            if container_id is None:
+                self._action_result.set_status(phantom.APP_ERROR, f"Failed to create container for alert {alert_name}")
+                return phantom.APP_ERROR
+
+            artifact_data = {
+                "container_id": container_id,
+                "name": display_name,
+                "source_data_identifier": alert_name,
+                "cef": self.__get_cef_rs(alert),
+                "cef_types": {"alert_id": ["gti rs alert id"]},
+                "data": alert,
+                "severity": soar_severity,
+            }
+
+            ret_val, message, _ = self._connector.save_artifacts([artifact_data])
+            if phantom.is_fail(ret_val):
+                self._connector.debug_print(consts.ARTIFACT_ERROR_MESSAGE.format(message))
+
+            update_container_data = {"status": container_status}
+            if container_status == "closed":
+                update_container_data["tags"] = ["closed_on_gti"]
+            if soar_severity:
+                update_container_data["severity"] = soar_severity
+
+            self._connector.util.update_container(container_id, update_container_data)
+            self._connector.debug_print(f"Container {container_id} updated: status={container_status}, severity={soar_severity}")
+
+        return phantom.APP_SUCCESS
+
+    def _get_or_create_rs_container(self, alert_name, display_name):
+        """Return an existing container ID for the RS alert, or create a new one.
+
+        Args:
+            alert_name (str): Unique RS alert name used as source_data_identifier.
+            display_name (str): Human-readable alert name for the container title.
+
+        Returns:
+            int or None: Container ID on success, None on failure.
+        """
+        container_id = self._check_for_existing_rs_container(alert_name)
+        if container_id is not None:
+            self._connector.debug_print(f"Using existing container {container_id} for RS alert: {alert_name}")
+            return container_id
+
+        container_data = {
+            "name": f"GTI - {display_name}",
+            "source_data_identifier": alert_name,
+        }
+        ret_val, message, container_id = self._connector.save_container(container_data)
+        if phantom.is_fail(ret_val):
+            self._connector.debug_print(consts.CONTAINER_ERROR_MESSAGE.format(container_id, message))
+            return None
+
+        self._connector.debug_print(f"Created new container {container_id} for RS alert: {alert_name}")
+        return container_id
+
+    def _check_for_existing_rs_container(self, alert_name):
+        """Query SOAR REST API to find an existing container by RS alert source_data_identifier.
+
+        Args:
+            alert_name (str): The unique RS alert name used as source_data_identifier.
+
+        Returns:
+            int or None: The container ID if found, None otherwise.
+        """
+        try:
+            url = f'{self._connector.get_phantom_base_url()}rest/container?_filter_source_data_identifier="{alert_name}"&sort=id&order=desc'
+            self._connector.debug_print(f"Checking for existing RS container for alert: {alert_name}")
+            response = requests.get(url, verify=ph_config.platform_strict_tls, timeout=30)
+
+            if response.status_code != 200:
+                self._connector.debug_print(f"Failed to query containers: HTTP {response.status_code}")
+                return None
+
+            containers = response.json().get("data", [])
+            if not containers:
+                self._connector.debug_print(f"No existing container found for RS alert: {alert_name}")
+                return None
+
+            container_id = containers[0].get("id")
+            self._connector.debug_print(f"Found existing container {container_id} for RS alert: {alert_name}")
+            return container_id
+
+        except Exception as e:
+            self._connector.debug_print(f"Error checking for existing RS container: {e!s}")
+            return None
+
+    def __get_cef_rs(self, alert):
+        """Build CEF dict from an RS alert.
+
+        Args:
+            alert (dict): The RS alert data.
+
+        Returns:
+            dict: CEF fields.
+        """
+        audit = alert.get("audit", {})
+        detail = alert.get("detail", {})
+        relevance = alert.get("relevanceAnalysis", {})
+        severity = alert.get("severityAnalysis", {})
+        priority = alert.get("priorityAnalysis", {})
+        name = alert.get("name", "")
+
+        findings_count = alert.get("findingCount") or len(alert.get("findings", []))
+
+        return {
+            "alert_id": self._connector.util._extract_alert_id(name),
+            "update_time": audit.get("updateTime"),
+            "updater": audit.get("updater"),
+            "detail_type": detail.get("detailType"),
+            "state": alert.get("state"),
+            "findings": findings_count,
+            "ai_summary": alert.get("aiSummary"),
+            "tag": alert.get("etag"),
+            "relevant": relevance.get("relevant"),
+            "relevance_level": relevance.get("relevanceLevel"),
+            "relevance_confidence": relevance.get("confidence"),
+            "severity_level": severity.get("severityLevel"),
+            "severity_confidence": severity.get("confidence"),
+            "priority_level": priority.get("priorityLevel"),
+        }
+
+    def __clean_rs_filter(self, filter_str):
+        """Remove audit.update_time conditions from the user-supplied filter string.
+
+        Args:
+            filter_str (str): The raw filter string from config.
+
+        Returns:
+            str: Filter string with all audit.update_time clauses removed.
+        """
+        if not filter_str:
+            return ""
+        cleaned = re.sub(
+            r'\s*(?:AND\s+|OR\s+)?audit\.update_time\s*(?:<=|>=|<|>|=|[≤≥])\s*"[^"]*"',
+            "",
+            filter_str,
+            flags=re.IGNORECASE,
+        )
+        # Remove any orphaned leading AND/OR
+        cleaned = re.sub(r"^\s*(?:AND|OR)\s+", "", cleaned, flags=re.IGNORECASE)
+        # Remove any orphaned trailing AND/OR
+        cleaned = re.sub(r"\s+(?:AND|OR)\s*$", "", cleaned, flags=re.IGNORECASE)
+        return re.sub(r"\s+", " ", cleaned).strip()
 
     def _create_container(self, day):
         """
@@ -935,7 +1258,7 @@ class OnPoll(BaseAction):
                         continue
                     data[key] = self._connector.util.convert_unix_to_utc(value)
                 # Recursively process nested objects
-                elif isinstance(value, (dict, list)):
+                elif isinstance(value, dict | list):
                     data[key] = self._convert_all_date_fields_to_utc(value)
 
         # Handle lists

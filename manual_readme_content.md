@@ -4,9 +4,9 @@ Supercharge your Splunk SOAR with Google Threat Intelligence, unifying unparalle
 
 # Explanation of Data Ingestion
 
-This integration supports three types of data ingestion: **IOC Stream**, **DTM Alerts**, and **ASM Issues**. If an ingestion type is not selected while configuring asset, data ingestion will not occur. Only one data ingestion type can be configured per asset. To configure multiple data ingestions, set up multiple assets.
+This integration supports four types of data ingestion: **IOC Stream**, **DTM Alerts**, **ASM Issues**, and **RS Alerts**. If an ingestion type is not selected while configuring asset, data ingestion will not occur. Only one data ingestion type can be configured per asset. To configure multiple data ingestions, set up multiple assets.
 
-The below details describes the configuration and usage of the GTI integration for Splunk SOAR, focusing on the three on-poll ingestion types: **IOC Stream**, **DTM Alerts**, and **ASM Issues**.
+The below details describes the configuration and usage of the GTI integration for Splunk SOAR, focusing on the four on-poll ingestion types: **IOC Stream**, **DTM Alerts**, **ASM Issues**, and **RS Alerts**.
 
 ______________________________________________________________________
 
@@ -14,7 +14,7 @@ ______________________________________________________________________
 
 ### Poll Now Feature
 
-The **Poll Now** action retrieves the most recent 1 hour of data for all three ingestion types: **IOC Stream**, **DTM Alerts**, and **ASM Issues**.
+The **Poll Now** action retrieves the most recent 1 hour of data for all four ingestion types: **IOC Stream**, **DTM Alerts**, **ASM Issues**, and **RS Alerts**.
 
 **Important Notes:**
 
@@ -28,7 +28,7 @@ The **Poll Now** action retrieves the most recent 1 hour of data for all three i
 Set the ingestion interval to 1 hour for optimal performance and timely data updates. Please note that using very short intervals may negatively impact data ingestion efficiency and the overall performance of your instance.
 
 **Limit Parameter:**\
-The `limit` parameter controls the maximum number of records ingested per poll. The maximum allowed value is **1000**; if a higher or invalid value is set, it will be ignored and **1000** will be used.
+The `limit` parameter controls the maximum number of records ingested per poll. The maximum allowed value is **1000**; if a higher or invalid value is set, it will be ignored and **1000** will be used. This parameter applies to all four ingestion types.
 
 **Lookback Days Parameter:**\
 The `lookback_days` parameter determines how many days back the integration will look for data during the initial poll. The maximum allowed value is **5**; if a higher or invalid value is set, it will be ignored and **5** will be used. Days are calculated as the absolute day difference from the current time.
@@ -41,6 +41,7 @@ ______________________________________________________________________
 
   - **Descriptors Only:** Includes only object descriptors, not full VT objects (boolean, default: false).
   - **Filter:** Filter string to filter IOCs (string). This is a recommended option for the IOC Stream data ingestion type to filter relevant IOCs and reduce noise.
+    **Note:** This field is shared with the **RS Alerts** ingestion type, which uses a different filter syntax; see the [Relevance System Alerts](#relevance-system-alerts) section for details.
 
 - **Container Creation:**\
   All IOC Stream data for a given UTC day will be ingested into a single container. A new container is created each day (UTC-based).
@@ -136,5 +137,52 @@ ______________________________________________________________________
 
 - **Closing ASM Issues in GTI:**\
   When an ASM issue container is closed in Splunk SOAR, the playbook provided in this [repository](https://github.com/virusTotal/gti-soar-playbooks/tree/main/Splunk%20SOAR) automatically closes the corresponding issue in GTI.
+
+______________________________________________________________________
+
+## Relevance System Alerts
+
+- **Parameters:**
+
+  - **Project ID (RS Alerts):** The GCP project ID associated with your RS alerts (string, **required**). RS Alerts ingestion will fail if this field is not configured.
+
+  - **Filter:** Shared with IOC Stream. For Relevance System Alerts, this field accepts filter expression in the documentation [here](https://gtidocs.virustotal.com/reference/list-alerts) to narrow down alerts. `audit.update_time` conditions are **automatically removed** from the filter as the integration manages time-windowing internally using the **Lookback Days** parameter. Do not include `audit.update_time` in the filter string, as it will be stripped before the API call.
+
+    - **Example filters:**
+      - `state = "NEW"`
+      - `severityAnalysis.severityLevel = "SEVERITY_LEVEL_HIGH"`
+
+  - **Limit:** Maximum number of RS alerts to ingest per poll (max: 1000).
+
+  - **Lookback Days:** Number of days of historical data to retrieve during the initial poll (max: 5).
+
+- **Status Mapping of RS Alerts:**
+
+  | RS Alert State | SOAR Container Status |
+  |----------------------|----------------------|
+  | New | New |
+  | Read | Open |
+  | Triaged | Open |
+  | Escalated | Open |
+  | Resolved | Closed |
+  | Benign | Closed |
+  | False Positive | Closed |
+  | Tracked Externally | Closed |
+  | Not Actionable | Closed |
+  | Duplicate | Closed |
+
+- **Severity Mapping of Relevance System Alerts:**
+
+  | RS Alert Severity | SOAR Container Severity |
+  |--------------------|------------------------|
+  | Severity Level Low | Low |
+  | Severity Level Medium | Medium |
+  | Severity Level High | High |
+
+- **Container Creation:**\
+  Each Relevance System Alert results in one container, identified by the alert's unique name (used as `source_data_identifier`). If the same alert is encountered in a subsequent poll, the existing container is reused and a new artifact is appended to it.
+
+- **Container Updates:**\
+  The container's status and severity are updated on every poll based on the current state and severity level of the alert in GTI. Containers for alerts in a terminal state (Resolved, Benign, False Positive, Tracked Externally, Not Actionable, Duplicate) are automatically tagged with `closed_on_gti`.
 
 ______________________________________________________________________

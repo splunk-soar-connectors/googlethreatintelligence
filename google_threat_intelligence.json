@@ -15,7 +15,7 @@
     "utctime_updated": "2026-04-07T10:45:18.527906Z",
     "package_name": "phantom_google_threat_intelligence",
     "main_module": "google_threat_intelligence_connector.py",
-    "min_phantom_version": "6.4.0",
+    "min_phantom_version": "7.1.0.225",
     "fips_compliant": false,
     "app_wizard_version": "1.0.3",
     "configuration": {
@@ -32,17 +32,18 @@
             "value_list": [
                 "IOC Stream",
                 "DTM Alerts",
-                "ASM Issues"
+                "ASM Issues",
+                "RS Alerts"
             ]
         },
         "days": {
-            "description": "Lookback Days: Number of days of historical data to retrieve (max: 5) (Applicable for all three ingestion types)",
+            "description": "Lookback Days: Number of days of historical data to retrieve (max: 5) (Applicable for all four ingestion types)",
             "order": 2,
             "data_type": "numeric",
             "default": 5
         },
         "limit": {
-            "description": "Limit: Maximum number of objects to fetch per poll (max: 1000) (Applicable for all three ingestion types)",
+            "description": "Limit: Maximum number of objects to fetch per poll (max: 1000) (Applicable for all four ingestion types)",
             "order": 3,
             "data_type": "numeric",
             "default": 1000
@@ -54,7 +55,7 @@
             "default": false
         },
         "filter": {
-            "description": "Filter String (IOC Stream)",
+            "description": "Filter String (IOC Stream and RS Alerts)",
             "order": 5,
             "data_type": "string"
         },
@@ -106,6 +107,11 @@
         "project-id": {
             "description": "Project ID (ASM Issues)",
             "order": 15,
+            "data_type": "string"
+        },
+        "project-id-rs": {
+            "description": "Project ID (RS Alerts)",
+            "order": 16,
             "data_type": "string"
         }
     },
@@ -3238,7 +3244,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_analysis_results.Google Safebrowsing.engine_name",
                     "data_type": "string",
                     "example_values": [
-                        "Google Safebrowsing"
+                        "Test Safebrowsing"
                     ]
                 },
                 {
@@ -3266,7 +3272,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_analysis_results.Google.engine_name",
                     "data_type": "string",
                     "example_values": [
-                        "Google"
+                        "Test"
                     ]
                 },
                 {
@@ -4064,7 +4070,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_analysis_results.Microsoft.engine_name",
                     "data_type": "string",
                     "example_values": [
-                        "Microsoft"
+                        "TestABC"
                     ]
                 },
                 {
@@ -6298,7 +6304,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_analysis_results.google_safebrowsing.engine_name",
                     "data_type": "string",
                     "example_values": [
-                        "google_safebrowsing"
+                        "testabc_browsing"
                     ]
                 },
                 {
@@ -6564,7 +6570,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_final_url",
                     "data_type": "string",
                     "example_values": [
-                        "https://www.google.com/"
+                        "https://www.test.com/"
                     ]
                 },
                 {
@@ -6634,7 +6640,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_http_response_headers.Content-Security-Policy-Report-Only",
                     "data_type": "string",
                     "example_values": [
-                        "object-src 'none';base-uri 'self';script-src 'nonce-dVdim92YlfFLLMe2EpyP1g' 'strict-dynamic' 'report-sample' 'unsafe-eval' 'unsafe-inline' https: http:;report-uri https://csp.withgoogle.com/csp/gws/other-hp"
+                        "object-src 'none';base-uri 'self';script-src 'test-rtyrtestuhjd' 'strict-dynamic' 'report-sample' 'unsafe-eval' 'unsafe-inline' https: http:;report-uri https://test.withtest.com/csp/test/-hp"
                     ]
                 },
                 {
@@ -6683,7 +6689,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_http_response_headers.Report-To",
                     "data_type": "string",
                     "example_values": [
-                        "{\"group\":\"gws\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/gws/other\"}]}"
+                        "{\"group\":\"test\",\"max_age\":25920,\"endpoints\":[{\"url\":\"https://test.test.com/test/report-to/test/other\"}]}"
                     ]
                 },
                 {
@@ -6799,7 +6805,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_https_certificate.extensions.subject_alternative_name.*",
                     "data_type": "string",
                     "example_values": [
-                        "*.google.com"
+                        "*.test.com"
                     ]
                 },
                 {
@@ -6827,7 +6833,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_https_certificate.issuer.O",
                     "data_type": "string",
                     "example_values": [
-                        "Google Trust Services"
+                        "Test Services"
                     ]
                 },
                 {
@@ -6876,7 +6882,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_https_certificate.subject.CN",
                     "data_type": "string",
                     "example_values": [
-                        "*.google.com"
+                        "*.test.com"
                     ]
                 },
                 {
@@ -7008,14 +7014,14 @@
                     "data_path": "action_result.data.*.data.attributes.meaningful_name",
                     "data_type": "string",
                     "example_values": [
-                        "google-threat-intelligence-scan-private-file.json"
+                        "test-file.json"
                     ]
                 },
                 {
                     "data_path": "action_result.data.*.data.attributes.names.*",
                     "data_type": "string",
                     "example_values": [
-                        "google-threat-intelligence-scan-private-file.json"
+                        "test-file.json"
                     ]
                 },
                 {
@@ -7286,7 +7292,7 @@
                     "data_path": "action_result.data.*.data.attributes.rdap.ldh_name",
                     "data_type": "string",
                     "example_values": [
-                        "google.com"
+                        "test.com"
                     ]
                 },
                 {
@@ -7331,7 +7337,7 @@
                     "data_path": "action_result.data.*.data.attributes.rdap.nameservers.*.ldh_name",
                     "data_type": "string",
                     "example_values": [
-                        "ns1.google.com"
+                        "abc.test.com"
                     ]
                 },
                 {
@@ -7639,7 +7645,7 @@
                     "data_path": "action_result.data.*.data.attributes.title",
                     "data_type": "string",
                     "example_values": [
-                        "Google"
+                        "Test"
                     ]
                 },
                 {
@@ -7717,7 +7723,7 @@
                     "data_path": "action_result.data.*.data.attributes.url",
                     "data_type": "string",
                     "example_values": [
-                        "https://www.google.com/"
+                        "https://www.test.com/"
                     ]
                 },
                 {
@@ -8692,7 +8698,7 @@
                     "data_path": "action_result.data.*.attributes.aggregations.files.registry_keys_deleted.*.value",
                     "data_type": "string",
                     "example_values": [
-                        "HKEY_CURRENT_USER\\Software\\Microsoft\\Office\\14.0\\Word\\Resiliency\\StartupItems\\*{{"
+                        "HKEY_CURRENT_USER\\Test\\ABC\\*{{"
                     ]
                 },
                 {
@@ -8720,7 +8726,7 @@
                     "data_path": "action_result.data.*.attributes.aggregations.files.registry_keys_opened.*.value",
                     "data_type": "string",
                     "example_values": [
-                        "HKEY_CURRENT_USER\\Software\\Microsoft\\Office\\14.0\\Word\\Resiliency\\StartupItems\\*{{"
+                        "HKEY_CURRENT_USER\\Test\\ABC\\*{{"
                     ]
                 },
                 {
@@ -8988,14 +8994,14 @@
                     "data_path": "action_result.data.*.attributes.cpes.*.end_cpe.uri",
                     "data_type": "string",
                     "example_values": [
-                        "cpe:2.3:o:microsoft:windows_server_20h2:10.0.19042.1766:*:*:*:*:*:*:*"
+                        "cpe:0.0:o:test:test_server_0a0a:10.0.0000.0000:*:*:*:*:*:*:*"
                     ]
                 },
                 {
                     "data_path": "action_result.data.*.attributes.cpes.*.end_cpe.vendor",
                     "data_type": "string",
                     "example_values": [
-                        "Microsoft"
+                        "Test"
                     ]
                 },
                 {
@@ -9320,7 +9326,7 @@
                     "data_path": "action_result.data.*.attributes.origin",
                     "data_type": "string",
                     "example_values": [
-                        "Google Threat Intelligence"
+                        "Test Data"
                     ],
                     "column_name": "Origin",
                     "column_order": 3
@@ -10398,7 +10404,7 @@
                     "data_path": "action_result.parameter.url",
                     "data_type": "string",
                     "example_values": [
-                        "https://google.com"
+                        "https://test.com"
                     ],
                     "contains": [
                         "url"
@@ -12993,7 +12999,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_analysis_results.Google Safebrowsing.engine_name",
                     "data_type": "string",
                     "example_values": [
-                        "Google Safebrowsing"
+                        "Test browsing"
                     ]
                 },
                 {
@@ -13021,7 +13027,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_analysis_results.Google.engine_name",
                     "data_type": "string",
                     "example_values": [
-                        "Google"
+                        "Test"
                     ]
                 },
                 {
@@ -13834,7 +13840,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_analysis_results.Microsoft.engine_name",
                     "data_type": "string",
                     "example_values": [
-                        "Microsoft"
+                        "Test"
                     ]
                 },
                 {
@@ -16086,7 +16092,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_analysis_results.google_safebrowsing.engine_name",
                     "data_type": "string",
                     "example_values": [
-                        "google_safebrowsing"
+                        "test_browsing"
                     ]
                 },
                 {
@@ -16336,7 +16342,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_dns_records.*.value",
                     "data_type": "string",
                     "example_values": [
-                        "smtp.google.com"
+                        "abc.test.com"
                     ]
                 },
                 {
@@ -16350,7 +16356,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_final_url",
                     "data_type": "string",
                     "example_values": [
-                        "https://www.google.com/"
+                        "https://www.test.com/"
                     ]
                 },
                 {
@@ -16427,7 +16433,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_http_response_headers.Content-Security-Policy-Report-Only",
                     "data_type": "string",
                     "example_values": [
-                        "object-src 'none';base-uri 'self';script-src 'nonce-fLKEJ3mZqMxV6lm_oGYG_w' 'strict-dynamic' 'report-sample' 'unsafe-eval' 'unsafe-inline' https: http:;report-uri https://csp.withgoogle.com/csp/gws/other-hp"
+                        "object-src 'none';base-uri 'self';script-src 'ntest-ftestmZqMxVtestYG_w' 'strict-dynamic' 'report-sample' 'unsafe-eval' 'unsafe-inline' https: http:;report-uri https://csp.test.com/abc/test/other-hp"
                     ]
                 },
                 {
@@ -16476,7 +16482,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_http_response_headers.Report-To",
                     "data_type": "string",
                     "example_values": [
-                        "{\"group\":\"gws\",\"max_age\":2592000,\"endpoints\":[{\"url\":\"https://csp.withgoogle.com/csp/report-to/gws/other\"}]}"
+                        "{\"group\":\"test\",\"max_age\":25920,\"endpoints\":[{\"url\":\"https://test.test.com/test/report-to/test/other\"}]}"
                     ]
                 },
                 {
@@ -16585,7 +16591,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_https_certificate.extensions.subject_alternative_name.*",
                     "data_type": "string",
                     "example_values": [
-                        "*.google.com"
+                        "*.test.com"
                     ]
                 },
                 {
@@ -16613,7 +16619,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_https_certificate.issuer.O",
                     "data_type": "string",
                     "example_values": [
-                        "Google Trust Services"
+                        "Test Services"
                     ]
                 },
                 {
@@ -16662,7 +16668,7 @@
                     "data_path": "action_result.data.*.data.attributes.last_https_certificate.subject.CN",
                     "data_type": "string",
                     "example_values": [
-                        "*.google.com"
+                        "*.test.com"
                     ]
                 },
                 {
@@ -16806,7 +16812,7 @@
                     "data_path": "action_result.data.*.data.attributes.outgoing_links.*",
                     "data_type": "string",
                     "example_values": [
-                        "https://about.dummyurl.com/?utm_source=google-ZZ&utm_medium=referral&utm_campaign=hp-footer&fg=1"
+                        "https://about.test.com/?utm_source=dummy-1Z&utm_medium=test&utm=hp&fg=1"
                     ]
                 },
                 {
@@ -17063,7 +17069,7 @@
                     "data_path": "action_result.data.*.data.attributes.rdap.ldh_name",
                     "data_type": "string",
                     "example_values": [
-                        "google.com"
+                        "test.com"
                     ]
                 },
                 {
@@ -17108,7 +17114,7 @@
                     "data_path": "action_result.data.*.data.attributes.rdap.nameservers.*.ldh_name",
                     "data_type": "string",
                     "example_values": [
-                        "ns1.google.com"
+                        "abc.test.com"
                     ]
                 },
                 {
@@ -17287,7 +17293,7 @@
                     "data_path": "action_result.data.*.data.attributes.redirection_chain.*",
                     "data_type": "string",
                     "example_values": [
-                        "https://www.google.com/"
+                        "https://www.test.com/"
                     ]
                 },
                 {
@@ -17412,7 +17418,7 @@
                     "data_path": "action_result.data.*.data.attributes.title",
                     "data_type": "string",
                     "example_values": [
-                        "Google"
+                        "Test"
                     ]
                 },
                 {
@@ -17472,7 +17478,7 @@
                     "data_path": "action_result.data.*.data.attributes.url",
                     "data_type": "string",
                     "example_values": [
-                        "https://www.google.com/"
+                        "https://www.test.com/"
                     ]
                 },
                 {
@@ -17641,7 +17647,7 @@
                     "data_path": "action_result.data.*.data.relationships.reports.data.*.attributes.origin",
                     "data_type": "string",
                     "example_values": [
-                        "Google Threat Intelligence"
+                        "Test Data"
                     ]
                 },
                 {
@@ -18711,7 +18717,7 @@
                     "data_path": "action_result.data.*.data.attributes.origin",
                     "data_type": "string",
                     "example_values": [
-                        "Google Threat Intelligence"
+                        "Test Data"
                     ],
                     "column_name": "Origin",
                     "column_order": 6
@@ -19065,8 +19071,7 @@
                     "data_path": "action_result.parameter.tags",
                     "data_type": "string",
                     "example_values": [
-                        "test_tag",
-                        "test_tag2"
+                        "test_tag"
                     ]
                 },
                 {
@@ -19228,7 +19233,7 @@
                     "data_path": "action_result.data.*.title",
                     "data_type": "string",
                     "example_values": [
-                        "Found topic \"amazon\" posted by actor \"Faramarz Apllanadi\" on Telegram channel \"szpmarket\""
+                        "Found posted by actor \"test\" on Telegram channel \"test\""
                     ],
                     "column_name": "Title",
                     "column_order": 3
@@ -19400,6 +19405,545 @@
                     "data_type": "string",
                     "example_values": [
                         "Action has been executed successfully"
+                    ]
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
+                }
+            ],
+            "render": {
+                "width": 12,
+                "type": "table",
+                "height": 5
+            },
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "get rs alert",
+            "identifier": "get_rs_alert",
+            "description": "Retrieve Relevance System Alert details by alert ID",
+            "type": "investigate",
+            "read_only": true,
+            "parameters": {
+                "alert_id": {
+                    "description": "The ID of the RS alert to retrieve",
+                    "order": 0,
+                    "data_type": "string",
+                    "required": true,
+                    "primary": true,
+                    "contains": [
+                        "gti rs alert id"
+                    ]
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.alert_id",
+                    "data_type": "string",
+                    "example_values": [
+                        "f7test7d-test-48b5-test-aee60dtestc9"
+                    ],
+                    "contains": [
+                        "gti rs alert id"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.aiSummary",
+                    "data_type": "string",
+                    "example_values": [
+                        "Test Summary of the alert"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.alert_id",
+                    "data_type": "string",
+                    "example_values": [
+                        "f7test7d-test-48b5-test-aee60dtestc9"
+                    ],
+                    "column_name": "Alert ID",
+                    "column_order": 0,
+                    "contains": [
+                        "gti rs alert id"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.audit.createTime",
+                    "data_type": "string",
+                    "example_values": [
+                        "2026-04-28T06:22:19.718658426Z"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.audit.creator",
+                    "data_type": "string",
+                    "example_values": [
+                        "backend"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.audit.updateTime",
+                    "data_type": "string",
+                    "example_values": [
+                        "2026-04-28T06:40:33.274624392Z"
+                    ],
+                    "column_name": "Update Time",
+                    "column_order": 1
+                },
+                {
+                    "data_path": "action_result.data.*.audit.updater",
+                    "data_type": "string",
+                    "example_values": [
+                        "0x1000003test8:test6XjEMFlAtestxfGhI0X6fDDtestW84aqGU#"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.detail.dataLeak.severity",
+                    "data_type": "string",
+                    "example_values": [
+                        "MEDIUM"
+                    ],
+                    "column_name": "Detail Type Severity",
+                    "column_order": 4
+                },
+                {
+                    "data_path": "action_result.data.*.detail.detailType",
+                    "data_type": "string",
+                    "example_values": [
+                        "data_leak"
+                    ],
+                    "column_name": "Detail Type",
+                    "column_order": 3
+                },
+                {
+                    "data_path": "action_result.data.*.displayName",
+                    "data_type": "string",
+                    "example_values": [
+                        "Potential Threat to Information Technology and Services Sector"
+                    ],
+                    "column_name": "Display Name",
+                    "column_order": 5
+                },
+                {
+                    "data_path": "action_result.data.*.etag",
+                    "data_type": "string",
+                    "example_values": [
+                        "W/\"32-420a6fa5f712ctest08048d81053btest2e24f53da5d84d3198dda00a6\""
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.findingCount",
+                    "data_type": "string",
+                    "example_values": [
+                        "1"
+                    ],
+                    "column_name": "Finding Count",
+                    "column_order": 6
+                },
+                {
+                    "data_path": "action_result.data.*.name",
+                    "data_type": "string",
+                    "example_values": [
+                        "projects/gti-test0410-test-45a8-test-bf/alerts/f7test7d-test-48b5-test-aee60dtestc9"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.priorityAnalysis.priorityLevel",
+                    "data_type": "string",
+                    "example_values": [
+                        "PRIORITY_LEVEL_LOW"
+                    ],
+                    "column_name": "Priority Level",
+                    "column_order": 7
+                },
+                {
+                    "data_path": "action_result.data.*.priorityAnalysis.reasoning",
+                    "data_type": "string",
+                    "example_values": [
+                        "Review this finding as a secondary priority. While the leak originates from a third-party site, the exposure of employee professional data increases the risk of targeted social engineering against your engineering staff."
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.relevanceAnalysis.confidence",
+                    "data_type": "string",
+                    "example_values": [
+                        "CONFIDENCE_LEVEL_HIGH"
+                    ],
+                    "column_name": "Relevance Analysis Confidence",
+                    "column_order": 12
+                },
+                {
+                    "data_path": "action_result.data.*.relevanceAnalysis.reasoning",
+                    "data_type": "string",
+                    "example_values": [
+                        "The leak explicitly targets 'REMOTE3.CO', a platform for web3 and crypto jobs, which is not an entity or subsidiary of Crest Data. While the database contains professional profiles (LinkedIn, GitHub, skills) that could include Crest Data employees, the Client is not the primary target."
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.relevanceAnalysis.relevanceLevel",
+                    "data_type": "string",
+                    "example_values": [
+                        "RELEVANCE_LEVEL_LOW"
+                    ],
+                    "column_name": "Relevance Level",
+                    "column_order": 11
+                },
+                {
+                    "data_path": "action_result.data.*.relevanceAnalysis.relevant",
+                    "data_type": "boolean",
+                    "example_values": [
+                        true,
+                        false
+                    ],
+                    "column_name": "Relevant",
+                    "column_order": 10
+                },
+                {
+                    "data_path": "action_result.data.*.severityAnalysis.confidence",
+                    "data_type": "string",
+                    "example_values": [
+                        "CONFIDENCE_LEVEL_HIGH"
+                    ],
+                    "column_name": "Severity Analysis Confidence",
+                    "column_order": 9
+                },
+                {
+                    "data_path": "action_result.data.*.severityAnalysis.reasoning",
+                    "data_type": "string",
+                    "example_values": [
+                        "The leak contains professional PII, including email addresses, GitHub URLs, and LinkedIn profiles. For any Client employees included, this facilitates targeted phishing or social engineering, though it does not represent a direct breach of Client systems."
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.severityAnalysis.severityLevel",
+                    "data_type": "string",
+                    "example_values": [
+                        "SEVERITY_LEVEL_MEDIUM"
+                    ],
+                    "column_name": "Severity Level",
+                    "column_order": 8
+                },
+                {
+                    "data_path": "action_result.data.*.state",
+                    "data_type": "string",
+                    "example_values": [
+                        "BENIGN"
+                    ],
+                    "column_name": "State",
+                    "column_order": 2
+                },
+                {
+                    "data_path": "action_result.summary",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string",
+                    "example_values": [
+                        "Successfully fetched RS alert details"
+                    ]
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
+                }
+            ],
+            "render": {
+                "width": 12,
+                "type": "table",
+                "height": 5
+            },
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "update rs alert status",
+            "identifier": "update_rs_alert_status",
+            "description": "Update the status of an Relevance System alert",
+            "type": "generic",
+            "read_only": false,
+            "parameters": {
+                "alert_id": {
+                    "description": "The ID of the RS alert",
+                    "order": 0,
+                    "data_type": "string",
+                    "required": true,
+                    "primary": true,
+                    "contains": [
+                        "gti rs alert id"
+                    ]
+                },
+                "status": {
+                    "description": "Status to set for the alert",
+                    "order": 1,
+                    "data_type": "string",
+                    "value_list": [
+                        "Benign",
+                        "Duplicate",
+                        "False Positive",
+                        "Not Actionable",
+                        "Read",
+                        "Resolved",
+                        "Triaged",
+                        "Externally Tracked"
+                    ],
+                    "required": true
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.alert_id",
+                    "data_type": "string",
+                    "example_values": [
+                        "alert123"
+                    ],
+                    "contains": [
+                        "gti rs alert id"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.status",
+                    "data_type": "string",
+                    "example_values": [
+                        "benign"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.aiSummary",
+                    "data_type": "string",
+                    "example_values": [
+                        "Test Summary of the alert"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.alert_id",
+                    "data_type": "string",
+                    "example_values": [
+                        "f7test7d-test-48b5-test-aee60dtestc9"
+                    ],
+                    "column_name": "Alert ID",
+                    "column_order": 0,
+                    "contains": [
+                        "gti rs alert id"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.audit.createTime",
+                    "data_type": "string",
+                    "example_values": [
+                        "2026-04-28T06:22:19.718658426Z"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.audit.creator",
+                    "data_type": "string",
+                    "example_values": [
+                        "backend"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.audit.updateTime",
+                    "data_type": "string",
+                    "example_values": [
+                        "2026-04-28T06:40:33.274624392Z"
+                    ],
+                    "column_name": "Update Time",
+                    "column_order": 1
+                },
+                {
+                    "data_path": "action_result.data.*.audit.updater",
+                    "data_type": "string",
+                    "example_values": [
+                        "0x1000003a782a8:AEjPq6XjEMFlA6hiVxfGhI0X6fDDjbrPW84aqGU#"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.detail.dataLeak.severity",
+                    "data_type": "string",
+                    "example_values": [
+                        "MEDIUM"
+                    ],
+                    "column_name": "Detail Type Severity",
+                    "column_order": 4
+                },
+                {
+                    "data_path": "action_result.data.*.detail.detailType",
+                    "data_type": "string",
+                    "example_values": [
+                        "data_leak"
+                    ],
+                    "column_name": "Detail Type",
+                    "column_order": 3
+                },
+                {
+                    "data_path": "action_result.data.*.displayName",
+                    "data_type": "string",
+                    "example_values": [
+                        "Potential Threat to Information Technology and Services Sector"
+                    ],
+                    "column_name": "Display Name",
+                    "column_order": 5
+                },
+                {
+                    "data_path": "action_result.data.*.etag",
+                    "data_type": "string",
+                    "example_values": [
+                        "W/\"32-420a6fa5f712ctest08048d81053btest2e24f53da5d84d3198dda00a6\""
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.findingCount",
+                    "data_type": "string",
+                    "example_values": [
+                        "1"
+                    ],
+                    "column_name": "Finding Count",
+                    "column_order": 6
+                },
+                {
+                    "data_path": "action_result.data.*.name",
+                    "data_type": "string",
+                    "example_values": [
+                        "projects/gti-test0410-test-45a8-test-bf/alerts/f7test7d-test-48b5-test-aee60dtestc9"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.priorityAnalysis.priorityLevel",
+                    "data_type": "string",
+                    "example_values": [
+                        "PRIORITY_LEVEL_LOW"
+                    ],
+                    "column_name": "Priority Level",
+                    "column_order": 7
+                },
+                {
+                    "data_path": "action_result.data.*.priorityAnalysis.reasoning",
+                    "data_type": "string",
+                    "example_values": [
+                        "Review this finding as a secondary priority. While the leak originates from a third-party site, the exposure of employee professional data increases the risk of targeted social engineering against your engineering staff."
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.relevanceAnalysis.confidence",
+                    "data_type": "string",
+                    "example_values": [
+                        "CONFIDENCE_LEVEL_HIGH"
+                    ],
+                    "column_name": "Relevance Analysis Confidence",
+                    "column_order": 12
+                },
+                {
+                    "data_path": "action_result.data.*.relevanceAnalysis.reasoning",
+                    "data_type": "string",
+                    "example_values": [
+                        "The leak explicitly targets 'REMOTE3.CO', a platform for web3 and crypto jobs, which is not an entity or subsidiary of Crest Data. While the database contains professional profiles (LinkedIn, GitHub, skills) that could include Crest Data employees, the Client is not the primary target."
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.relevanceAnalysis.relevanceLevel",
+                    "data_type": "string",
+                    "example_values": [
+                        "RELEVANCE_LEVEL_LOW"
+                    ],
+                    "column_name": "Relevance Level",
+                    "column_order": 11
+                },
+                {
+                    "data_path": "action_result.data.*.relevanceAnalysis.relevant",
+                    "data_type": "boolean",
+                    "example_values": [
+                        true,
+                        false
+                    ],
+                    "column_name": "Relevant",
+                    "column_order": 10
+                },
+                {
+                    "data_path": "action_result.data.*.severityAnalysis.confidence",
+                    "data_type": "string",
+                    "example_values": [
+                        "CONFIDENCE_LEVEL_HIGH"
+                    ],
+                    "column_name": "Severity Analysis Confidence",
+                    "column_order": 9
+                },
+                {
+                    "data_path": "action_result.data.*.severityAnalysis.reasoning",
+                    "data_type": "string",
+                    "example_values": [
+                        "The leak contains professional PII, including email addresses, GitHub URLs, and LinkedIn profiles. For any Client employees included, this facilitates targeted phishing or social engineering, though it does not represent a direct breach of Client systems."
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.severityAnalysis.severityLevel",
+                    "data_type": "string",
+                    "example_values": [
+                        "SEVERITY_LEVEL_MEDIUM"
+                    ],
+                    "column_name": "Severity Level",
+                    "column_order": 8
+                },
+                {
+                    "data_path": "action_result.data.*.state",
+                    "data_type": "string",
+                    "example_values": [
+                        "BENIGN"
+                    ],
+                    "column_name": "State",
+                    "column_order": 2
+                },
+                {
+                    "data_path": "action_result.summary",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string",
+                    "example_values": [
+                        "Successfully updated RS alert status"
                     ]
                 },
                 {

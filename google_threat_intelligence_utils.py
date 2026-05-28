@@ -18,16 +18,19 @@ import ipaddress
 import json
 import re
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode, urlparse, urlunparse
 
+import encryption_helper
 import phantom.app as phantom
 import phantom.rules as ph_rules
 import requests
 from bs4 import BeautifulSoup
 from phantom.utils import config as ph_config
+from requests.exceptions import HTTPError
 
 import google_threat_intelligence_consts as consts
+from google_threat_intelligence_oauth import GoogleThreatIntelligenceOAuth
 
 
 class RetVal(tuple):
@@ -151,10 +154,15 @@ class GoogleThreatIntelligenceUtils:
             return RetVal(phantom.APP_SUCCESS, resp_json)
 
         # Extract error message from JSON response
-        error_message = resp_json.get("error", {}).get("message", "No error message provided")
+        error = resp_json.get("error", {})
+        error_message = consts.NO_ERROR_MESSAGE
+        if isinstance(error, dict):
+            error_message = error.get("message", consts.NO_ERROR_MESSAGE)
+        elif isinstance(error, str):
+            error_message = error
 
         if resp_json.get("message"):
-            error_message = resp_json.get("message", "No error message provided")
+            error_message = resp_json.get("message", consts.NO_ERROR_MESSAGE)
         message = f"Error from server. Status Code: {r.status_code} Data from server: {error_message}"
 
         return RetVal(action_result.set_status(phantom.APP_ERROR, message))
@@ -267,6 +275,121 @@ class GoogleThreatIntelligenceUtils:
             )
         processed_response = self._process_response(r, action_result)
         return (processed_response, r.headers) if return_response_headers else processed_response
+
+    def make_rest_call_rs(self, endpoint, action_result, method="get", **kwargs):
+        """
+        Make a REST call to the API with retry logic and OAuth authentication.
+
+        Args:
+            endpoint (str): The endpoint path to make the REST call to.
+            action_result (ActionResult): The action result object to set the status on.
+            method (str, optional): The method to use for the REST call. Defaults to "get".
+
+        Returns:
+            tuple: A tuple containing the status of the processing and the data to return.
+
+        Retry Logic:
+            - 401 (OAuth): 1 retry with no sleep
+            - 429 (Rate Limited): 2 retries with 30s and 60s sleep
+            - 5XX (Server Error): 2 retries with 30s and 60s sleep
+        """
+        resp_json = None
+
+        try:
+            request_func = getattr(requests, method)
+        except AttributeError:
+            return RetVal(
+                action_result.set_status(phantom.APP_ERROR, f"Invalid method: {method}"),
+                resp_json,
+            )
+
+        oauth_handler = GoogleThreatIntelligenceOAuth(self._connector)
+        url = f"https://threatintelligence.googleapis.com{endpoint}"
+
+        ret_val, oauth_headers = oauth_handler.get_auth_headers(action_result)
+        if phantom.is_fail(ret_val):
+            return RetVal(ret_val, None)
+        kwargs["headers"] = {
+            **oauth_headers,
+            **(kwargs.get("headers") or {}),
+        }
+
+        return self._execute_with_retry(request_func, url, oauth_handler, action_result, kwargs)
+
+    def _execute_with_retry(self, request_func, url, oauth_handler, action_result, kwargs):
+        """Execute an HTTP request with retry logic for transient errors."""
+        while True:
+            try:
+                r = request_func(url, timeout=consts.REQUEST_DEFAULT_TIMEOUT, **kwargs)
+                r.raise_for_status()
+                return self._process_response(r, action_result)
+
+            except HTTPError as http_err:
+                r = http_err.response
+                should_continue, result = self._handle_http_error(r, r.status_code, oauth_handler, action_result, kwargs)
+                if should_continue:
+                    continue
+                return result
+
+            except Exception as e:
+                return RetVal(
+                    action_result.set_status(
+                        phantom.APP_ERROR,
+                        f"Error Connecting to server. Details: {e!s}",
+                    ),
+                    None,
+                )
+
+    def _handle_http_error(self, r, status_code, oauth_handler, action_result, kwargs):
+        """Decide whether to retry after an HTTP error.
+
+        Returns:
+            tuple: (should_retry: bool, result: RetVal or None)
+        """
+        if status_code == 401 and consts.OAUTH_RETRIES < consts.OAUTH_401_MAX_RETRIES:
+            consts.OAUTH_RETRIES += 1
+            self._connector.debug_print(
+                f"Access token invalid, regenerating token (attempt {consts.OAUTH_RETRIES}/{consts.OAUTH_401_MAX_RETRIES})"
+            )
+            success, fail_val = self._refresh_oauth_token(oauth_handler, action_result, kwargs)
+            if success:
+                return True, None
+            if fail_val is not None:
+                return False, RetVal(fail_val, None)
+            return False, self._process_response(r, action_result)
+
+        if (status_code == 429 or status_code >= 500) and consts.OAUTH_RETRIES < consts.OAUTH_MAX_RETRIES:
+            sleep_time = consts.OAUTH_RETRY_WAIT_TIME[consts.OAUTH_RETRIES]
+            consts.OAUTH_RETRIES += 1
+            self._connector.debug_print(
+                f"Received status {status_code}, retrying in {sleep_time}s (attempt {consts.OAUTH_RETRIES}/{consts.OAUTH_MAX_RETRIES})"
+            )
+            time.sleep(sleep_time)
+            return True, None
+
+        return False, self._process_response(r, action_result)
+
+    def _refresh_oauth_token(self, oauth_handler, action_result, kwargs):
+        """Regenerate OAuth token and update request headers.
+
+        Returns:
+            tuple: (success: bool, fail_val: ret_val or None)
+                   (True, None)       — token refreshed, retry the request
+                   (False, ret_val)   — OAuth hard failure, propagate ret_val
+                   (False, None)      — exception during refresh, fall back to process_response
+        """
+        try:
+            ret_val, _ = oauth_handler.generate_and_save_token(action_result)
+            if phantom.is_fail(ret_val):
+                return False, ret_val
+            self._connector.debug_print("Retrying API call with new token")
+            ret_val, oauth_headers = oauth_handler.get_auth_headers(action_result)
+            if phantom.is_fail(ret_val):
+                return False, ret_val
+            kwargs["headers"].update(oauth_headers)
+            return True, None
+        except Exception:
+            return False, None
 
     def _paginator(self, endpoint, action_result, method, limit=None, is_on_poll=False, **kwargs):
         """
@@ -788,7 +911,7 @@ class GoogleThreatIntelligenceUtils:
             str: The UTC datetime string in ISO 8601 format.
 
         """
-        dt_utc = datetime.fromtimestamp(unix_time, tz=timezone.utc)
+        dt_utc = datetime.fromtimestamp(unix_time, tz=UTC)
 
         # Format the datetime as a string in ISO 8601 format
         formatted_timestamp = dt_utc.strftime("%Y-%m-%dT%H:%M:%S")
@@ -807,7 +930,7 @@ class GoogleThreatIntelligenceUtils:
         Returns:
             str: last_seen_after formatted string (e.g., '2025-05-14T10:00:00Z')
         """
-        target_time = datetime.now(timezone.utc) - timedelta(days=days, hours=hours)
+        target_time = datetime.now(UTC) - timedelta(days=days, hours=hours)
         value = target_time.strftime("%Y-%m-%dT%H:%M:%SZ")
         self._connector.debug_print(f"last_seen_after value {days} days, {hours} hours before the current UTC time: {value}")
         return value
@@ -914,6 +1037,41 @@ class GoogleThreatIntelligenceUtils:
 
         self._common_message_handler_for_soar(r, "Updating the container status")
 
+    def update_container(self, container_id, data):
+        """
+        Updates the status of a container in Phantom.
+
+        Args:
+            container_id (str): The ID of the container to update.
+            status (str): The status to update the container with.
+
+        Returns:
+            None
+        """
+        body = self.get_container_details(container_id)
+        if body:
+            body.update(data)
+        self._connector.debug_print("Updating the container")
+        url = consts.SPLUNK_SOAR_CONTAINER_ENDPOINT.format(url=self._connector.get_phantom_base_url(), container_id=container_id)
+        try:
+            r = requests.post(url, json=body, verify=ph_config.platform_strict_tls)
+        except Exception as e:
+            self._connector.debug_print(f"Unable to update the container {container_id}", e)
+
+        self._common_message_handler_for_soar(r, f"Updating the container {container_id}")
+
+    def _extract_alert_id(self, alert_name):
+        """Extract the Relevance System Alert UUID from a full resource name.
+
+        Args:
+            alert_name (str): Full resource name, e.g.
+                ``projects/<project>/alerts/<uuid>``.
+
+        Returns:
+            str: The alert UUID segment, or the full string if no ``/`` found.
+        """
+        return alert_name.rsplit("/", 1)[-1] if "/" in alert_name else alert_name
+
     def _get_artifact_of_container_id(self, container_id):
         """
         Retrieve the artifact associated with container.
@@ -965,6 +1123,52 @@ class GoogleThreatIntelligenceUtils:
             self._connector.debug_print("Unable to update the artifact", e)
 
         self._common_message_handler_for_soar(resp, "updating artifact")
+
+    def decrypt_state(self, state, salt):
+        """
+        Decrypts the OAuth token data stored in the connector state.
+
+        :param state: state dictionary
+        :param salt: salt used for decryption (asset ID)
+        :return: decrypted state
+        """
+        if not isinstance(state, dict):
+            return {}
+        if not state.get("oauth_token_data", {}).get("is_encrypted"):
+            return state
+
+        access_token = state.get("oauth_token_data", {}).get("access_token")
+        if access_token:
+            state["oauth_token_data"]["access_token"] = encryption_helper.decrypt(access_token, salt)
+            if state["oauth_token_data"]["access_token"]:
+                state["oauth_token_data"]["is_encrypted"] = False
+            else:
+                state.get("oauth_token_data", {}).pop("is_encrypted", None)
+
+        return state
+
+    def encrypt_state(self, state, salt):
+        """
+        Encrypts the OAuth token data before persisting the connector state.
+
+        :param state: state dictionary
+        :param salt: salt used for encryption (asset ID)
+        :return: encrypted state
+        """
+        if not isinstance(state, dict):
+            return {}
+        is_encrypted = state.get("oauth_token_data", {}).get("is_encrypted", False)
+        if is_encrypted:
+            self._connector.debug_print("State is already encrypted, skipping encryption")
+            return state
+        access_token = state.get("oauth_token_data", {}).get("access_token")
+        if access_token:
+            state["oauth_token_data"]["access_token"] = encryption_helper.encrypt(access_token, salt)
+            if state["oauth_token_data"]["access_token"]:
+                state["oauth_token_data"]["is_encrypted"] = True
+            else:
+                state.get("oauth_token_data", {}).pop("is_encrypted", None)
+        return state
 
 
 class Validator:
@@ -1144,3 +1348,40 @@ class Validator:
             )
 
         return phantom.APP_SUCCESS, parameter
+
+    @staticmethod
+    def validate_alert_id_uuid(action_result, alert_id, key="alert_id"):
+        """
+        Validate a parameter as a valid UUID v4 format for alert ID.
+
+        Args:
+            action_result (ActionResult): The ActionResult object.
+            alert_id (str): The alert ID to validate.
+            key (str): The key of the parameter to validate. Defaults to "alert_id".
+
+        Returns:
+            tuple[int, str|None]: A tuple containing the status of the validation and the valid alert ID.
+        """
+        import re
+
+        if not alert_id:
+            return (
+                action_result.set_status(
+                    phantom.APP_ERROR,
+                    consts.ERROR_MISSING_REQUIRED_PARAM.format(key=key),
+                ),
+                None,
+            )
+
+        # UUID v4 format validation: 8-4-4-4-12 hex digits
+        uuid_pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        if not re.match(uuid_pattern, alert_id, re.IGNORECASE):
+            return (
+                action_result.set_status(
+                    phantom.APP_ERROR,
+                    consts.ERROR_INVALID_ALERT_ID_FORMAT,
+                ),
+                None,
+            )
+
+        return phantom.APP_SUCCESS, alert_id
