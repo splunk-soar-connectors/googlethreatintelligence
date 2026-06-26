@@ -1057,6 +1057,7 @@ class GoogleThreatIntelligenceUtils:
             r = requests.post(url, json=body, verify=ph_config.platform_strict_tls)
         except Exception as e:
             self._connector.debug_print(f"Unable to update the container {container_id}", e)
+            return
 
         self._common_message_handler_for_soar(r, f"Updating the container {container_id}")
 
