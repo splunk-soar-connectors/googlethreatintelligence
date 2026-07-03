@@ -36,16 +36,6 @@ class TestConnectivity(BaseAction):
         """
         self._connector.save_progress(consts.TEST_CONNECTIVITY_START_MSG.format("Google Threat Intelligence"))
 
-        # Generate OAuth token to validate credentials
-        oauth_handler = GoogleThreatIntelligenceOAuth(self._connector)
-        ret_val, _ = oauth_handler.generate_and_save_token(self._action_result)
-
-        if phantom.is_fail(ret_val):
-            self._connector.save_progress(consts.ERROR_TEST_CONNECTIVITY)
-            return self._action_result.get_status()
-
-        self._connector.debug_print("OAuth token generated successfully")
-
         config = self._connector.get_config()
         ingestion_type = config.get("ingestion_type")
         project_id = config.get("project-id-rs")
@@ -54,6 +44,19 @@ class TestConnectivity(BaseAction):
             self._connector.save_progress("Error: Project ID (RS Alerts) is required for RS Alerts on poll.")
             return self._action_result.set_status(phantom.APP_ERROR, consts.ERROR_MISSING_PROJECT_ID)
 
+        # Generate OAuth token to validate credentials
+        try:
+            oauth_handler = GoogleThreatIntelligenceOAuth(self._connector)
+            ret_val, _ = oauth_handler.generate_and_save_token(self._action_result)
+
+            if phantom.is_fail(ret_val):
+                self._connector.save_progress("Error: Failed to generate OAuth token. Please check your API key and try again.")
+            else:
+                self._connector.save_progress("OAuth token generated successfully")
+        except Exception as e:
+            self._connector.save_progress(f"Exception Occurred while generating access token: {str(e)}")
+
+        self._connector.debug_print("Testing connectivity with Basic Authentication")
         endpoint, method = self.__get_request_url_and_method()
 
         ret_val, response = self._make_rest_call(url=endpoint, method=method)
