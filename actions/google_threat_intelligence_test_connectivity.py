@@ -54,7 +54,7 @@ class TestConnectivity(BaseAction):
             else:
                 self._connector.save_progress("OAuth token generated successfully")
         except Exception as e:
-            self._connector.save_progress(f"Exception Occurred while generating access token: {str(e)}")
+            self._connector.save_progress(f"Exception Occurred while generating access token: {e!s}")
 
         self._connector.debug_print("Testing connectivity with Basic Authentication")
         endpoint, method = self.__get_request_url_and_method()
