@@ -45,7 +45,15 @@ ERROR_INVALID_INT_RANGE = "Please provide a valid integer value in the '{key}' p
 INGESTION_START_MESSAGE = "Ingesting the data"
 CONTAINER_ERROR_MESSAGE = "Error occurred while saving the container: ID {}: {}"
 ARTIFACT_ERROR_MESSAGE = "Error occurred while saving the artifact(s): {}"
+CONTAINER_INFO_ERROR_MESSAGE = "Error occurred while fetching container information for container ID {}."
+NO_ERROR_MESSAGE = "No error message provided"
 
+# OAuth
+OAUTH_TOKEN_ENDPOINT = "https://idp.prod.identity.proactive.virustotal.com/realms/master/exchange/api-key"
+ERROR_MISSING_OAUTH_API_KEY = "API Key is required for OAuth token generation"  # pragma: allowlist secret
+ERROR_INVALID_OAUTH_RESPONSE = "Invalid OAuth token response from server"
+ERROR_MISSING_PROJECT_ID = "Project ID is required. Please configure it in the asset settings."
+ERROR_INVALID_ALERT_ID_FORMAT = "Invalid alert ID format. Alert ID must be a valid UUID"
 
 # endpoints
 SCAN_PRIVATE_URL_ENDPOINT = "/api/v3/private/urls"
@@ -71,9 +79,12 @@ GET_PRIVATE_FILE_UPLOAD_URL_ENDPOINT = "/api/v3/private/files/upload_url"
 SCAN_URL_ENDPOINT = "/api/v3/urls"
 SCAN_FILE_ENDPOINT = "/api/v3/files/upload_url"
 VULN_INTEL_LOOKUP_ENDPOINT = "/api/v3/{entity_type}/{entity}/vulnerabilities"
+GET_RS_ALERT_ENDPOINT = "/v1beta/projects/{project}/alerts/{alert}"
+UPDATE_RS_ALERT_STATUS_ENDPOINT = "/v1beta/projects/{project}/alerts/{alert}:{status}"
 DTM_ON_POLL_ENDPOINT = "/api/v3/dtm/alerts"
 ASM_ON_POLL_ENDPOINT = "/api/v3/asm/search/issues"
 IOC_ON_POLL_ENDPOINT = "/api/v3/ioc_stream"
+RS_ON_POLL_ENDPOINT = "/v1beta/projects/{project}/alerts"
 UPDATE_DTM_ALERT_STATUS_ENDPOINT = "/api/v3/dtm/alerts/{id}"
 UPDATE_ASM_ISSUE_STATUS_ENDPOINT = "/api/v3/asm/issues/{id}/status"
 
@@ -92,6 +103,8 @@ ACTION_UPDATE_DTM_ALERT_STATUS_SUCCESS_RESPONSE = "Successfully updated DTM aler
 ACTION_UPDATE_ASM_ISSUE_STATUS_SUCCESS_RESPONSE = "Successfully updated ASM issue status"
 ACTION_VULN_INTEL_LOOKUP_SUCCESS_RESPONSE = "Successfully fetched vulnerability details for entity"
 ACTION_VULN_INTEL_LOOKUP_NOT_FOUND_RESPONSE = "No vulnerability details found for entity"
+ACTION_GET_RS_ALERT_SUCCESS_RESPONSE = "Successfully fetched RS alert details"
+ACTION_UPDATE_RS_ALERT_STATUS_SUCCESS_RESPONSE = "Successfully updated RS alert status"
 
 # Splunk endpoints
 SPLUNK_SOAR_GET_CONTAINER_ARTIFACT_ENDPOINT = "{url}/rest/artifact?_filter_container_id={container_id}"
@@ -177,3 +190,42 @@ FILE = "files"
 
 RETRY_COUNT = 5
 RETRY_COUNT_PRIVATE_FILE_SCAN = 10
+
+# For action: update RS alert status
+UPDATE_RS_ALERT_STATUS_MAPPING = {
+    "benign": "benign",
+    "duplicate": "duplicate",
+    "false positive": "falsePositive",
+    "escalated": "escalate",
+    "not actionable": "notActionable",
+    "read": "read",
+    "resolved": "resolve",
+    "triaged": "triage",
+    "externally tracked": "trackExternally",
+}
+
+RS_ALERTS_CONTAINER_STATUS_MAPPING = {
+    "RESOLVED": "closed",
+    "BENIGN": "closed",
+    "FALSE_POSITIVE": "closed",
+    "TRACKED_EXTERNALLY": "closed",
+    "NOT_ACTIONABLE": "closed",
+    "DUPLICATE": "closed",
+    "READ": "open",
+    "TRIAGED": "open",
+    "ESCALATED": "open",
+    "NEW": "new",
+}
+
+DEFAULT_SEVERITY = "SEVERITY_LEVEL_MEDIUM"
+SEVERITY_MAPPING_RS = {
+    "SEVERITY_LEVEL_LOW": "low",
+    "SEVERITY_LEVEL_MEDIUM": "medium",
+    "SEVERITY_LEVEL_HIGH": "high",
+}
+
+ON_POLL_RS_TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+OAUTH_RETRIES = 0
+OAUTH_401_MAX_RETRIES = 1
+OAUTH_MAX_RETRIES = 2
+OAUTH_RETRY_WAIT_TIME = [30, 60]

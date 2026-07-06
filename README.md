@@ -4,7 +4,7 @@ Publisher: Google <br>
 Connector Version: 1.1.0 <br>
 Product Vendor: Google <br>
 Product Name: Google Threat Intelligence <br>
-Minimum Product Version: 6.4.0
+Minimum Product Version: 7.1.0.225
 
 Supercharge Splunk SOAR with Google Threat Intelligence by integrating real-time IOCs, breach insights, and threat actor data from VirusTotal, Mandiant, and Google for automated, context-rich responses
 
@@ -14,9 +14,9 @@ Supercharge your Splunk SOAR with Google Threat Intelligence, unifying unparalle
 
 # Explanation of Data Ingestion
 
-This integration supports three types of data ingestion: **IOC Stream**, **DTM Alerts**, and **ASM Issues**. If an ingestion type is not selected while configuring asset, data ingestion will not occur. Only one data ingestion type can be configured per asset. To configure multiple data ingestions, set up multiple assets.
+This integration supports four types of data ingestion: **IOC Stream**, **DTM Alerts**, **ASM Issues**, and **RS Alerts**. If an ingestion type is not selected while configuring asset, data ingestion will not occur. Only one data ingestion type can be configured per asset. To configure multiple data ingestions, set up multiple assets.
 
-The below details describes the configuration and usage of the GTI integration for Splunk SOAR, focusing on the three on-poll ingestion types: **IOC Stream**, **DTM Alerts**, and **ASM Issues**.
+The below details describes the configuration and usage of the GTI integration for Splunk SOAR, focusing on the four on-poll ingestion types: **IOC Stream**, **DTM Alerts**, **ASM Issues**, and **RS Alerts**.
 
 ______________________________________________________________________
 
@@ -24,7 +24,7 @@ ______________________________________________________________________
 
 ### Poll Now Feature
 
-The **Poll Now** action retrieves the most recent 1 hour of data for all three ingestion types: **IOC Stream**, **DTM Alerts**, and **ASM Issues**.
+The **Poll Now** action retrieves the most recent 1 hour of data for all four ingestion types: **IOC Stream**, **DTM Alerts**, **ASM Issues**, and **RS Alerts**.
 
 **Important Notes:**
 
@@ -38,7 +38,7 @@ The **Poll Now** action retrieves the most recent 1 hour of data for all three i
 Set the ingestion interval to 1 hour for optimal performance and timely data updates. Please note that using very short intervals may negatively impact data ingestion efficiency and the overall performance of your instance.
 
 **Limit Parameter:**\
-The `limit` parameter controls the maximum number of records ingested per poll. The maximum allowed value is **1000**; if a higher or invalid value is set, it will be ignored and **1000** will be used.
+The `limit` parameter controls the maximum number of records ingested per poll. The maximum allowed value is **1000**; if a higher or invalid value is set, it will be ignored and **1000** will be used. This parameter applies to all four ingestion types.
 
 **Lookback Days Parameter:**\
 The `lookback_days` parameter determines how many days back the integration will look for data during the initial poll. The maximum allowed value is **5**; if a higher or invalid value is set, it will be ignored and **5** will be used. Days are calculated as the absolute day difference from the current time.
@@ -51,6 +51,7 @@ ______________________________________________________________________
 
   - **Descriptors Only:** Includes only object descriptors, not full VT objects (boolean, default: false).
   - **Filter:** Filter string to filter IOCs (string). This is a recommended option for the IOC Stream data ingestion type to filter relevant IOCs and reduce noise.
+    **Note:** This field is shared with the **RS Alerts** ingestion type, which uses a different filter syntax; see the [Relevance System Alerts](#relevance-system-alerts) section for details.
 
 - **Container Creation:**\
   All IOC Stream data for a given UTC day will be ingested into a single container. A new container is created each day (UTC-based).
@@ -149,6 +150,113 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
+## Relevance System Alerts
+
+- **Parameters:**
+
+  - **Project ID (RS Alerts):** The GCP project ID associated with your RS alerts (string, **required**). RS Alerts ingestion will fail if this field is not configured.
+
+  - **Filter:** Shared with IOC Stream. For Relevance System Alerts, this field accepts filter expression in the documentation [here](https://gtidocs.virustotal.com/reference/list-alerts) to narrow down alerts. `audit.update_time` conditions are **automatically removed** from the filter as the integration manages time-windowing internally using the **Lookback Days** parameter. Do not include `audit.update_time` in the filter string, as it will be stripped before the API call.
+
+    - **Example filters:**
+      - `state = "NEW"`
+      - `severityAnalysis.severityLevel = "SEVERITY_LEVEL_HIGH"`
+
+  - **Limit:** Maximum number of RS alerts to ingest per poll (max: 1000).
+
+  - **Lookback Days:** Number of days of historical data to retrieve during the initial poll (max: 5).
+
+- **Status Mapping of RS Alerts:**
+
+  | RS Alert State | SOAR Container Status |
+  |----------------------|----------------------|
+  | New | New |
+  | Read | Open |
+  | Triaged | Open |
+  | Escalated | Open |
+  | Resolved | Closed |
+  | Benign | Closed |
+  | False Positive | Closed |
+  | Tracked Externally | Closed |
+  | Not Actionable | Closed |
+  | Duplicate | Closed |
+
+- **Severity Mapping of Relevance System Alerts:**
+
+  | RS Alert Severity | SOAR Container Severity |
+  |--------------------|------------------------|
+  | Severity Level Low | Low |
+  | Severity Level Medium | Medium |
+  | Severity Level High | High |
+
+- **Container Creation:**\
+  Each Relevance System Alert results in one container, identified by the alert's unique name (used as `source_data_identifier`). If the same alert is encountered in a subsequent poll, the existing container is reused and a new artifact is appended to it.
+
+- **Container Updates:**\
+  The container's status and severity are updated on every poll based on the current state and severity level of the alert in GTI. Containers for alerts in a terminal state (Resolved, Benign, False Positive, Tracked Externally, Not Actionable, Duplicate) are automatically tagged with `closed_on_gti`.
+
+- **Closing RS Alert in GTI:**\
+  When a RS alert container is closed in Splunk SOAR, the playbook provided in this [repository](https://github.com/virusTotal/gti-soar-playbooks/tree/main/Splunk%20SOAR) automatically updates the status of the corresponding issue in GTI to **Resolved**.
+
+______________________________________________________________________
+
+### Prerequisites for RS Alert Access
+
+Access to The Relevance System requires an active Google Threat Intelligence license. Your experience within the system will depend on your assigned role:
+
+- **GTI Alerts Admin:** Required to set up the initial Organization Profile, configure integrations, and manage system-wide alert thresholds.
+- **GTI Alerts User:** Designed for day-to-day analysts. Users can view dashboards, investigate alerts, change alert statuses, and provide feedback, but cannot change the core organizational configuration.
+
+For more information, refer to the [Dark Web Intel documentation](https://gtidocs.virustotal.com/docs/dark-web-intel).
+
+______________________________________________________________________
+
+## Steps to Configure the Google Threat Intelligence Splunk SOAR Asset
+
+Follow these steps to create an asset for the Splunk SOAR Platform:
+
+1. **Log in to the Google Threat Intelligence Platform.**
+
+1. **Obtain your API Key:**
+
+   - From the Left Navbar/Menu, click **API Key**.
+   - Access your API key.
+
+1. **Obtain your Project ID:**
+
+   - In the URL when accessing GTI Alerts, for example: `https://proactive.virustotal.com/alerts?...&project=projects%2F**your-project-id**`
+   - The Project ID is `your-project-id`.
+
+1. **Log in to your Splunk SOAR Platform.**
+
+1. **Navigate to the Apps section:**
+
+   - Navigate to the Home dropdown and select **Apps**.
+   - Search for **Google Threat Intelligence** from the search box.
+
+1. **Create a new asset:**
+
+   - Click on the **CONFIGURE NEW ASSET** button.
+
+1. **Configure Asset Info:**
+
+   - Navigate to the **Asset Info** tab.
+   - Enter the **Asset name** and **Asset description**.
+
+1. **Configure Asset Settings:**
+
+   - Navigate to the **Asset Settings** tab.
+   - Paste the **API key** of your Google Threat Intelligence Platform.
+   - Add the **Project ID** of your GTI instance in the **Project ID** parameter.
+
+1. **Save the asset.**
+
+1. **Test connectivity:**
+
+   - Click the **TEST CONNECTIVITY** button to test the connectivity of the Splunk SOAR server to the Google Threat Intelligence.
+
+______________________________________________________________________
+
 ### Configuration variables
 
 This table lists the configuration variables required to operate Google Threat Intelligence. These variables are specified when configuring a Google Threat Intelligence asset in Splunk SOAR.
@@ -157,10 +265,10 @@ VARIABLE | REQUIRED | TYPE | DESCRIPTION
 -------- | -------- | ---- | -----------
 **x-apikey** | required | password | Google Threat Intelligence API Key |
 **ingestion_type** | optional | string | Type of data to retrieve and ingest |
-**days** | optional | numeric | Lookback Days: Number of days of historical data to retrieve (max: 5) (Applicable for all three ingestion types) |
-**limit** | optional | numeric | Limit: Maximum number of objects to fetch per poll (max: 1000) (Applicable for all three ingestion types) |
+**days** | optional | numeric | Lookback Days: Number of days of historical data to retrieve (max: 5) (Applicable for all four ingestion types) |
+**limit** | optional | numeric | Limit: Maximum number of objects to fetch per poll (max: 1000) (Applicable for all four ingestion types) |
 **descriptors_only** | optional | boolean | Descriptors Only: Includes only object descriptors, not full VT objects (IOC Stream) |
-**filter** | optional | string | Filter String (IOC Stream) |
+**filter** | optional | string | Filter String (IOC Stream and RS Alerts) |
 **monitor_id** | optional | string | Monitor ID: Filter alerts by the specified monitor ID(s). Supports multiple comma-separated values (DTM Alerts) |
 **status** | optional | string | Status: Filter alerts by status. Supports multiple comma-separated values (DTM Alerts) |
 **alert_type** | optional | string | Alert Type: Filter alerts by alert type. Supports multiple comma-separated values (DTM Alerts) |
@@ -171,6 +279,7 @@ VARIABLE | REQUIRED | TYPE | DESCRIPTION
 **mscore_gte** | optional | numeric | MScore GTE: Filter alerts with mscores greater than or equal to the given value (DTM Alerts) |
 **search_string** | optional | string | Search String (ASM Issues) (Fields last_seen_after, last_seen_before, and first_seen_after will be ignored) |
 **project-id** | optional | string | Project ID (ASM Issues) |
+**project-id-rs** | optional | string | Project ID (RS Alerts) |
 
 ### Supported Actions
 
@@ -188,7 +297,9 @@ VARIABLE | REQUIRED | TYPE | DESCRIPTION
 [get passive dns data](#action-get-passive-dns-data) - Fetch passive DNS data for a domain or IP address <br>
 [get vulnerability report](#action-get-vulnerability-report) - Fetch the vulnerability report for a given vulnerability ID <br>
 [update dtm alert status](#action-update-dtm-alert-status) - Update the status of a DTM alert <br>
-[update asm issue status](#action-update-asm-issue-status) - Update the status of an ASM issue
+[update asm issue status](#action-update-asm-issue-status) - Update the status of an ASM issue <br>
+[get rs alert](#action-get-rs-alert) - Retrieve Relevance System Alert details by alert ID <br>
+[update rs alert status](#action-update-rs-alert-status) - Update the status of an Relevance System alert
 
 ## action: 'test connectivity'
 
@@ -701,11 +812,11 @@ action_result.data.\*.data.attributes.last_analysis_results.GData.engine_version
 action_result.data.\*.data.attributes.last_analysis_results.GData.method | string | | blacklist |
 action_result.data.\*.data.attributes.last_analysis_results.GData.result | string | | |
 action_result.data.\*.data.attributes.last_analysis_results.Google Safebrowsing.category | string | | harmless |
-action_result.data.\*.data.attributes.last_analysis_results.Google Safebrowsing.engine_name | string | | Google Safebrowsing |
+action_result.data.\*.data.attributes.last_analysis_results.Google Safebrowsing.engine_name | string | | Test Safebrowsing |
 action_result.data.\*.data.attributes.last_analysis_results.Google Safebrowsing.method | string | | blacklist |
 action_result.data.\*.data.attributes.last_analysis_results.Google Safebrowsing.result | string | | clean |
 action_result.data.\*.data.attributes.last_analysis_results.Google.category | string | | undetected |
-action_result.data.\*.data.attributes.last_analysis_results.Google.engine_name | string | | Google |
+action_result.data.\*.data.attributes.last_analysis_results.Google.engine_name | string | | Test |
 action_result.data.\*.data.attributes.last_analysis_results.Google.engine_update | string | | 20250506 |
 action_result.data.\*.data.attributes.last_analysis_results.Google.engine_version | string | | 1746520242 |
 action_result.data.\*.data.attributes.last_analysis_results.Google.method | string | | blacklist |
@@ -825,7 +936,7 @@ action_result.data.\*.data.attributes.last_analysis_results.MicroWorld-eScan.eng
 action_result.data.\*.data.attributes.last_analysis_results.MicroWorld-eScan.method | string | | blacklist |
 action_result.data.\*.data.attributes.last_analysis_results.MicroWorld-eScan.result | string | | |
 action_result.data.\*.data.attributes.last_analysis_results.Microsoft.category | string | | undetected |
-action_result.data.\*.data.attributes.last_analysis_results.Microsoft.engine_name | string | | Microsoft |
+action_result.data.\*.data.attributes.last_analysis_results.Microsoft.engine_name | string | | TestABC |
 action_result.data.\*.data.attributes.last_analysis_results.Microsoft.engine_update | string | | 20250506 |
 action_result.data.\*.data.attributes.last_analysis_results.Microsoft.engine_version | string | | 1.1.25030.1 |
 action_result.data.\*.data.attributes.last_analysis_results.Microsoft.method | string | | blacklist |
@@ -1157,7 +1268,7 @@ action_result.data.\*.data.attributes.last_analysis_results.desenmascara.me.engi
 action_result.data.\*.data.attributes.last_analysis_results.desenmascara.me.method | string | | blacklist |
 action_result.data.\*.data.attributes.last_analysis_results.desenmascara.me.result | string | | clean |
 action_result.data.\*.data.attributes.last_analysis_results.google_safebrowsing.category | string | | undetected |
-action_result.data.\*.data.attributes.last_analysis_results.google_safebrowsing.engine_name | string | | google_safebrowsing |
+action_result.data.\*.data.attributes.last_analysis_results.google_safebrowsing.engine_name | string | | testabc_browsing |
 action_result.data.\*.data.attributes.last_analysis_results.google_safebrowsing.engine_update | string | | 20250506 |
 action_result.data.\*.data.attributes.last_analysis_results.google_safebrowsing.engine_version | string | | 1.0 |
 action_result.data.\*.data.attributes.last_analysis_results.google_safebrowsing.method | string | | blacklist |
@@ -1199,7 +1310,7 @@ action_result.data.\*.data.attributes.last_dns_records.\*.ttl | numeric | | 300 
 action_result.data.\*.data.attributes.last_dns_records.\*.type | string | | AAAA |
 action_result.data.\*.data.attributes.last_dns_records.\*.value | string | | 2607:f8b0:4001:c11::71 |
 action_result.data.\*.data.attributes.last_dns_records_date | numeric | | 1746524055 |
-action_result.data.\*.data.attributes.last_final_url | string | | https://www.google.com/ |
+action_result.data.\*.data.attributes.last_final_url | string | | https://www.test.com/ |
 action_result.data.\*.data.attributes.last_http_response_code | numeric | | 200 |
 action_result.data.\*.data.attributes.last_http_response_content_length | numeric | | 198666 |
 action_result.data.\*.data.attributes.last_http_response_content_sha256 | string | | 92fc8db0bf5166be24a6901c0fc0ba7fdba020eac33a197bccfebbc32263d58f |
@@ -1209,14 +1320,14 @@ action_result.data.\*.data.attributes.last_http_response_headers.Accept-CH | str
 action_result.data.\*.data.attributes.last_http_response_headers.Alt-Svc | string | | h3=":443"; ma=2592000,h3-29=":443"; ma=2592000 |
 action_result.data.\*.data.attributes.last_http_response_headers.Cache-Control | string | | private, max-age=0 |
 action_result.data.\*.data.attributes.last_http_response_headers.Content-Encoding | string | | br |
-action_result.data.\*.data.attributes.last_http_response_headers.Content-Security-Policy-Report-Only | string | | object-src 'none';base-uri 'self';script-src 'nonce-dVdim92YlfFLLMe2EpyP1g' 'strict-dynamic' 'report-sample' 'unsafe-eval' 'unsafe-inline' https: http:;report-uri https://csp.withgoogle.com/csp/gws/other-hp |
+action_result.data.\*.data.attributes.last_http_response_headers.Content-Security-Policy-Report-Only | string | | object-src 'none';base-uri 'self';script-src 'test-rtyrtestuhjd' 'strict-dynamic' 'report-sample' 'unsafe-eval' 'unsafe-inline' https: http:;report-uri https://test.withtest.com/csp/test/-hp |
 action_result.data.\*.data.attributes.last_http_response_headers.Content-Type | string | | text/html; charset=UTF-8 |
 action_result.data.\*.data.attributes.last_http_response_headers.Cross-Origin-Opener-Policy | string | | same-origin-allow-popups; report-to="gws" |
 action_result.data.\*.data.attributes.last_http_response_headers.Date | string | | Tue, 06 May 2025 09:31:28 GMT |
 action_result.data.\*.data.attributes.last_http_response_headers.Expires | string | | -1 |
 action_result.data.\*.data.attributes.last_http_response_headers.P3P | string | | CP="This is not a P3P policy! See g.co/p3phelp for more info." |
 action_result.data.\*.data.attributes.last_http_response_headers.Permissions-Policy | string | | unload=() |
-action_result.data.\*.data.attributes.last_http_response_headers.Report-To | string | | {"group":"gws","max_age":2592000,"endpoints":[{"url":"https://csp.withgoogle.com/csp/report-to/gws/other"}]} |
+action_result.data.\*.data.attributes.last_http_response_headers.Report-To | string | | {"group":"test","max_age":25920,"endpoints":[{"url":"https://test.test.com/test/report-to/test/other"}]} |
 action_result.data.\*.data.attributes.last_http_response_headers.Server | string | | gws |
 action_result.data.\*.data.attributes.last_http_response_headers.Set-Cookie | string | | Dummy Cookie |
 action_result.data.\*.data.attributes.last_http_response_headers.Transfer-Encoding | string | | chunked |
@@ -1233,18 +1344,18 @@ action_result.data.\*.data.attributes.last_https_certificate.extensions.certific
 action_result.data.\*.data.attributes.last_https_certificate.extensions.crl_distribution_points.\* | string | | http://c.pki.goog/wr2/GSyT1N4PBrg.crl |
 action_result.data.\*.data.attributes.last_https_certificate.extensions.extended_key_usage.\* | string | | serverAuth |
 action_result.data.\*.data.attributes.last_https_certificate.extensions.key_usage.\* | string | | digitalSignature |
-action_result.data.\*.data.attributes.last_https_certificate.extensions.subject_alternative_name.\* | string | | \*.google.com |
+action_result.data.\*.data.attributes.last_https_certificate.extensions.subject_alternative_name.\* | string | | \*.test.com |
 action_result.data.\*.data.attributes.last_https_certificate.extensions.subject_key_identifier | string | | 38e7e06e8a5fcbf12e3660de676955d7ba477bd2 |
 action_result.data.\*.data.attributes.last_https_certificate.issuer.C | string | | US |
 action_result.data.\*.data.attributes.last_https_certificate.issuer.CN | string | | WR2 |
-action_result.data.\*.data.attributes.last_https_certificate.issuer.O | string | | Google Trust Services |
+action_result.data.\*.data.attributes.last_https_certificate.issuer.O | string | | Test Services |
 action_result.data.\*.data.attributes.last_https_certificate.public_key.algorithm | string | | EC |
 action_result.data.\*.data.attributes.last_https_certificate.public_key.ec.oid | string | | secp256r1 |
 action_result.data.\*.data.attributes.last_https_certificate.public_key.ec.pub | string | | 3059301306072a8648ce3d020106082a8648ce3d0301070342000414d33cad66329930bd593493048ef3613096629085921a70958af78e08b500b5965cee69f8fd1cda2f6af16e44e4e220d46df57eea8f8755b0de233c6bcaae4b |
 action_result.data.\*.data.attributes.last_https_certificate.serial_number | string | | b29e43b2ac795ce3099a2e878a3f58c1 |
 action_result.data.\*.data.attributes.last_https_certificate.size | numeric | | 3622 |
 action_result.data.\*.data.attributes.last_https_certificate.subject.C | string | | US |
-action_result.data.\*.data.attributes.last_https_certificate.subject.CN | string | | \*.google.com |
+action_result.data.\*.data.attributes.last_https_certificate.subject.CN | string | | \*.test.com |
 action_result.data.\*.data.attributes.last_https_certificate.subject.L | string | | San Francisco |
 action_result.data.\*.data.attributes.last_https_certificate.subject.O | string | | Cloudflare, Inc. |
 action_result.data.\*.data.attributes.last_https_certificate.subject.ST | string | | California |
@@ -1262,8 +1373,8 @@ action_result.data.\*.data.attributes.magic | string | | JSON text data |
 action_result.data.\*.data.attributes.magika | string | | JSON |
 action_result.data.\*.data.attributes.mandiant_ic_score | numeric | | 2 |
 action_result.data.\*.data.attributes.md5 | string | `md5` | deef1d19827a8c06f2a4652320250225 |
-action_result.data.\*.data.attributes.meaningful_name | string | | google-threat-intelligence-scan-private-file.json |
-action_result.data.\*.data.attributes.names.\* | string | | google-threat-intelligence-scan-private-file.json |
+action_result.data.\*.data.attributes.meaningful_name | string | | test-file.json |
+action_result.data.\*.data.attributes.names.\* | string | | test-file.json |
 action_result.data.\*.data.attributes.network | string | | 1.1.1.0/24 |
 action_result.data.\*.data.attributes.outgoing_links.\* | string | | Dummy Link |
 action_result.data.\*.data.attributes.popularity_ranks.Alexa.rank | numeric | | 1 |
@@ -1309,7 +1420,7 @@ action_result.data.\*.data.attributes.rdap.events.\*.event_date | string | | 202
 action_result.data.\*.data.attributes.rdap.events.\*.links.\* | string | | |
 action_result.data.\*.data.attributes.rdap.handle | string | | 2138514_DOMAIN_COM-VRSN |
 action_result.data.\*.data.attributes.rdap.lang | string | | |
-action_result.data.\*.data.attributes.rdap.ldh_name | string | | google.com |
+action_result.data.\*.data.attributes.rdap.ldh_name | string | | test.com |
 action_result.data.\*.data.attributes.rdap.links.\* | string | | |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.entities.\* | string | | |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.events.\*.event_action | string | | last changed |
@@ -1318,7 +1429,7 @@ action_result.data.\*.data.attributes.rdap.nameservers.\*.events.\*.event_date |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.events.\*.links.\* | string | | |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.handle | string | | |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.lang | string | | |
-action_result.data.\*.data.attributes.rdap.nameservers.\*.ldh_name | string | | ns1.google.com |
+action_result.data.\*.data.attributes.rdap.nameservers.\*.ldh_name | string | | abc.test.com |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.links.\* | string | | |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.notices.\* | string | | |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.object_class_name | string | | nameserver |
@@ -1371,7 +1482,7 @@ action_result.data.\*.data.attributes.threat_severity.threat_severity_data.has_b
 action_result.data.\*.data.attributes.threat_severity.threat_severity_level | string | | SEVERITY_NONE |
 action_result.data.\*.data.attributes.threat_severity.version | numeric | | 5 |
 action_result.data.\*.data.attributes.times_submitted | numeric | | 1 |
-action_result.data.\*.data.attributes.title | string | | Google |
+action_result.data.\*.data.attributes.title | string | | Test |
 action_result.data.\*.data.attributes.tld | string | | com |
 action_result.data.\*.data.attributes.tlsh | string | | T19371B6737D1B827301C678E2656B0A4BF322936813D4DD0A9ED8490C065DEB4B1DBBDA |
 action_result.data.\*.data.attributes.total_votes.harmless | numeric | | |
@@ -1383,7 +1494,7 @@ action_result.data.\*.data.attributes.type_extension | string | | json |
 action_result.data.\*.data.attributes.type_tag | string | | json |
 action_result.data.\*.data.attributes.type_tags.\* | string | | internet |
 action_result.data.\*.data.attributes.unique_sources | numeric | | 1 |
-action_result.data.\*.data.attributes.url | string | | https://www.google.com/ |
+action_result.data.\*.data.attributes.url | string | | https://www.test.com/ |
 action_result.data.\*.data.attributes.whois | string | | Dummy Whois |
 action_result.data.\*.data.attributes.whois_date | numeric | | 1744028954 |
 action_result.data.\*.data.id | string | | 97997eac8c6143f9fdabf9de53d0b0b9b019c5fde510a67a7bcc2e99034432b0 |
@@ -1549,11 +1660,11 @@ action_result.data.\*.attributes.aggregations.files.popular_threat_name.\*.value
 action_result.data.\*.attributes.aggregations.files.registry_keys_deleted.\*.count | numeric | | 1 |
 action_result.data.\*.attributes.aggregations.files.registry_keys_deleted.\*.prevalence | numeric | | 1 |
 action_result.data.\*.attributes.aggregations.files.registry_keys_deleted.\*.total_related | numeric | | 1 |
-action_result.data.\*.attributes.aggregations.files.registry_keys_deleted.\*.value | string | | HKEY_CURRENT_USER\\Software\\Microsoft\\Office\\14.0\\Word\\Resiliency\\StartupItems\\\*{{ |
+action_result.data.\*.attributes.aggregations.files.registry_keys_deleted.\*.value | string | | HKEY_CURRENT_USER\\Test\\ABC\\\*{{ |
 action_result.data.\*.attributes.aggregations.files.registry_keys_opened.\*.count | numeric | | 1 |
 action_result.data.\*.attributes.aggregations.files.registry_keys_opened.\*.prevalence | numeric | | 1 |
 action_result.data.\*.attributes.aggregations.files.registry_keys_opened.\*.total_related | numeric | | 1 |
-action_result.data.\*.attributes.aggregations.files.registry_keys_opened.\*.value | string | | HKEY_CURRENT_USER\\Software\\Microsoft\\Office\\14.0\\Word\\Resiliency\\StartupItems\\\*{{ |
+action_result.data.\*.attributes.aggregations.files.registry_keys_opened.\*.value | string | | HKEY_CURRENT_USER\\Test\\ABC\\\*{{ |
 action_result.data.\*.attributes.aggregations.files.registry_keys_set.\*.count | numeric | | 1 |
 action_result.data.\*.attributes.aggregations.files.registry_keys_set.\*.prevalence | numeric | | 1 |
 action_result.data.\*.attributes.aggregations.files.registry_keys_set.\*.total_related | numeric | | 1 |
@@ -1595,8 +1706,8 @@ action_result.data.\*.attributes.counters.ip_addresses | numeric | | |
 action_result.data.\*.attributes.counters.subscribers | numeric | | |
 action_result.data.\*.attributes.counters.urls | numeric | | |
 action_result.data.\*.attributes.cpes.\*.end_cpe.product | string | | Windows Server 20H2 |
-action_result.data.\*.attributes.cpes.\*.end_cpe.uri | string | | cpe:2.3:o:microsoft:windows_server_20h2:10.0.19042.1766:\*:\*:\*:\*:\*:\*:\* |
-action_result.data.\*.attributes.cpes.\*.end_cpe.vendor | string | | Microsoft |
+action_result.data.\*.attributes.cpes.\*.end_cpe.uri | string | | cpe:0.0:o:test:test_server_0a0a:10.0.0000.0000:\*:\*:\*:\*:\*:\*:\* |
+action_result.data.\*.attributes.cpes.\*.end_cpe.vendor | string | | Test |
 action_result.data.\*.attributes.cpes.\*.end_cpe.version | string | | 10.0.19042.1766 |
 action_result.data.\*.attributes.cpes.\*.end_rel | string | | < |
 action_result.data.\*.attributes.cpes.\*.start_cpe | string | | |
@@ -1648,7 +1759,7 @@ action_result.data.\*.attributes.motivations.\* | string | | |
 action_result.data.\*.attributes.mve_id | string | | MVE-2022-4552 |
 action_result.data.\*.attributes.name | string | | CVE-2022-30190 |
 action_result.data.\*.attributes.operating_systems.\* | string | | |
-action_result.data.\*.attributes.origin | string | | Google Threat Intelligence |
+action_result.data.\*.attributes.origin | string | | Test Data |
 action_result.data.\*.attributes.predicted_risk_rating | string | | |
 action_result.data.\*.attributes.priority | string | | P0 |
 action_result.data.\*.attributes.private | boolean | | True |
@@ -1841,7 +1952,7 @@ action_result.parameter.interaction_timeout | numeric | | 60 |
 action_result.parameter.retention_period_days | numeric | | 1 |
 action_result.parameter.sandboxes | string | | cape_win |
 action_result.parameter.storage_region | string | | US |
-action_result.parameter.url | string | `url` | https://google.com |
+action_result.parameter.url | string | `url` | https://test.com |
 action_result.parameter.user_agent | string | | v3 |
 action_result.data | string | | |
 action_result.data.\*.data.attributes.expiration | numeric | | 1743749689 |
@@ -2236,11 +2347,11 @@ action_result.data.\*.data.attributes.last_analysis_results.GData.engine_version
 action_result.data.\*.data.attributes.last_analysis_results.GData.method | string | | blacklist |
 action_result.data.\*.data.attributes.last_analysis_results.GData.result | string | | |
 action_result.data.\*.data.attributes.last_analysis_results.Google Safebrowsing.category | string | | harmless |
-action_result.data.\*.data.attributes.last_analysis_results.Google Safebrowsing.engine_name | string | | Google Safebrowsing |
+action_result.data.\*.data.attributes.last_analysis_results.Google Safebrowsing.engine_name | string | | Test browsing |
 action_result.data.\*.data.attributes.last_analysis_results.Google Safebrowsing.method | string | | blacklist |
 action_result.data.\*.data.attributes.last_analysis_results.Google Safebrowsing.result | string | | clean |
 action_result.data.\*.data.attributes.last_analysis_results.Google.category | string | | undetected |
-action_result.data.\*.data.attributes.last_analysis_results.Google.engine_name | string | | Google |
+action_result.data.\*.data.attributes.last_analysis_results.Google.engine_name | string | | Test |
 action_result.data.\*.data.attributes.last_analysis_results.Google.engine_update | string | | 20250514 |
 action_result.data.\*.data.attributes.last_analysis_results.Google.engine_version | string | | 1747211443 |
 action_result.data.\*.data.attributes.last_analysis_results.Google.method | string | | blacklist |
@@ -2360,7 +2471,7 @@ action_result.data.\*.data.attributes.last_analysis_results.MicroWorld-eScan.eng
 action_result.data.\*.data.attributes.last_analysis_results.MicroWorld-eScan.method | string | | blacklist |
 action_result.data.\*.data.attributes.last_analysis_results.MicroWorld-eScan.result | string | | |
 action_result.data.\*.data.attributes.last_analysis_results.Microsoft.category | string | | undetected |
-action_result.data.\*.data.attributes.last_analysis_results.Microsoft.engine_name | string | | Microsoft |
+action_result.data.\*.data.attributes.last_analysis_results.Microsoft.engine_name | string | | Test |
 action_result.data.\*.data.attributes.last_analysis_results.Microsoft.engine_update | string | | 20250514 |
 action_result.data.\*.data.attributes.last_analysis_results.Microsoft.engine_version | string | | 1.1.25030.1 |
 action_result.data.\*.data.attributes.last_analysis_results.Microsoft.method | string | | blacklist |
@@ -2692,7 +2803,7 @@ action_result.data.\*.data.attributes.last_analysis_results.desenmascara.me.engi
 action_result.data.\*.data.attributes.last_analysis_results.desenmascara.me.method | string | | blacklist |
 action_result.data.\*.data.attributes.last_analysis_results.desenmascara.me.result | string | | clean |
 action_result.data.\*.data.attributes.last_analysis_results.google_safebrowsing.category | string | | undetected |
-action_result.data.\*.data.attributes.last_analysis_results.google_safebrowsing.engine_name | string | | google_safebrowsing |
+action_result.data.\*.data.attributes.last_analysis_results.google_safebrowsing.engine_name | string | | test_browsing |
 action_result.data.\*.data.attributes.last_analysis_results.google_safebrowsing.engine_update | string | | 20250514 |
 action_result.data.\*.data.attributes.last_analysis_results.google_safebrowsing.engine_version | string | | 1.0 |
 action_result.data.\*.data.attributes.last_analysis_results.google_safebrowsing.method | string | | blacklist |
@@ -2732,9 +2843,9 @@ action_result.data.\*.data.attributes.last_analysis_stats.undetected | numeric |
 action_result.data.\*.data.attributes.last_dns_records.\*.priority | numeric | | 10 |
 action_result.data.\*.data.attributes.last_dns_records.\*.ttl | numeric | | 25 |
 action_result.data.\*.data.attributes.last_dns_records.\*.type | string | | MX |
-action_result.data.\*.data.attributes.last_dns_records.\*.value | string | | smtp.google.com |
+action_result.data.\*.data.attributes.last_dns_records.\*.value | string | | abc.test.com |
 action_result.data.\*.data.attributes.last_dns_records_date | numeric | | 1747213079 |
-action_result.data.\*.data.attributes.last_final_url | string | | https://www.google.com/ |
+action_result.data.\*.data.attributes.last_final_url | string | | https://www.test.com/ |
 action_result.data.\*.data.attributes.last_http_response_code | numeric | | 200 |
 action_result.data.\*.data.attributes.last_http_response_content_length | numeric | | 161888 |
 action_result.data.\*.data.attributes.last_http_response_content_sha256 | string | | 4a79cebe13cb6edeb4f048ec31798e2ae8dd9f5855ba2fb6ff2e6f58a953056e |
@@ -2745,14 +2856,14 @@ action_result.data.\*.data.attributes.last_http_response_headers.Alt-Svc | strin
 action_result.data.\*.data.attributes.last_http_response_headers.Cache-Control | string | | private, max-age=0 |
 action_result.data.\*.data.attributes.last_http_response_headers.Content-Encoding | string | | br |
 action_result.data.\*.data.attributes.last_http_response_headers.Content-Length | string | | 161888 |
-action_result.data.\*.data.attributes.last_http_response_headers.Content-Security-Policy-Report-Only | string | | object-src 'none';base-uri 'self';script-src 'nonce-fLKEJ3mZqMxV6lm_oGYG_w' 'strict-dynamic' 'report-sample' 'unsafe-eval' 'unsafe-inline' https: http:;report-uri https://csp.withgoogle.com/csp/gws/other-hp |
+action_result.data.\*.data.attributes.last_http_response_headers.Content-Security-Policy-Report-Only | string | | object-src 'none';base-uri 'self';script-src 'ntest-ftestmZqMxVtestYG_w' 'strict-dynamic' 'report-sample' 'unsafe-eval' 'unsafe-inline' https: http:;report-uri https://csp.test.com/abc/test/other-hp |
 action_result.data.\*.data.attributes.last_http_response_headers.Content-Type | string | | text/html; charset=UTF-8 |
 action_result.data.\*.data.attributes.last_http_response_headers.Cross-Origin-Opener-Policy | string | | same-origin-allow-popups; report-to="gws" |
 action_result.data.\*.data.attributes.last_http_response_headers.Date | string | | Wed, 14 May 2025 10:30:45 GMT |
 action_result.data.\*.data.attributes.last_http_response_headers.Expires | string | | -1 |
 action_result.data.\*.data.attributes.last_http_response_headers.P3P | string | | CP="This is not a P3P policy! See g.co/p3phelp for more info." |
 action_result.data.\*.data.attributes.last_http_response_headers.Permissions-Policy | string | | unload=() |
-action_result.data.\*.data.attributes.last_http_response_headers.Report-To | string | | {"group":"gws","max_age":2592000,"endpoints":[{"url":"https://csp.withgoogle.com/csp/report-to/gws/other"}]} |
+action_result.data.\*.data.attributes.last_http_response_headers.Report-To | string | | {"group":"test","max_age":25920,"endpoints":[{"url":"https://test.test.com/test/report-to/test/other"}]} |
 action_result.data.\*.data.attributes.last_http_response_headers.Server | string | | gws |
 action_result.data.\*.data.attributes.last_http_response_headers.Set-Cookie | string | | Dummy Cookie |
 action_result.data.\*.data.attributes.last_http_response_headers.X-Frame-Options | string | | SAMEORIGIN |
@@ -2768,18 +2879,18 @@ action_result.data.\*.data.attributes.last_https_certificate.extensions.certific
 action_result.data.\*.data.attributes.last_https_certificate.extensions.crl_distribution_points.\* | string | | http://c.pki.goog/wr2/9UVbN0w5E6Y.crl |
 action_result.data.\*.data.attributes.last_https_certificate.extensions.extended_key_usage.\* | string | | serverAuth |
 action_result.data.\*.data.attributes.last_https_certificate.extensions.key_usage.\* | string | | digitalSignature |
-action_result.data.\*.data.attributes.last_https_certificate.extensions.subject_alternative_name.\* | string | | \*.google.com |
+action_result.data.\*.data.attributes.last_https_certificate.extensions.subject_alternative_name.\* | string | | \*.test.com |
 action_result.data.\*.data.attributes.last_https_certificate.extensions.subject_key_identifier | string | | b3397ca6824f2d3e9b70abb0e18ba2c83eb2a638 |
 action_result.data.\*.data.attributes.last_https_certificate.issuer.C | string | | US |
 action_result.data.\*.data.attributes.last_https_certificate.issuer.CN | string | | WR2 |
-action_result.data.\*.data.attributes.last_https_certificate.issuer.O | string | | Google Trust Services |
+action_result.data.\*.data.attributes.last_https_certificate.issuer.O | string | | Test Services |
 action_result.data.\*.data.attributes.last_https_certificate.public_key.algorithm | string | | EC |
 action_result.data.\*.data.attributes.last_https_certificate.public_key.ec.oid | string | | secp256r1 |
 action_result.data.\*.data.attributes.last_https_certificate.public_key.ec.pub | string | | 3059301306072a8648ce3d020106082a8648ce3d03010703420004c9fd2afb7e2538c658c206ad878018247c72322db84dd203ad1860ad2cba40d56e3e18f9aae5935d1622051d2e2c8213f8f2c6ee672074df9622593d1c88bd0d |
 action_result.data.\*.data.attributes.last_https_certificate.serial_number | string | | da4c71f767da54d512c6f93d8a9f2d5b |
 action_result.data.\*.data.attributes.last_https_certificate.size | numeric | | 3635 |
 action_result.data.\*.data.attributes.last_https_certificate.subject.C | string | | US |
-action_result.data.\*.data.attributes.last_https_certificate.subject.CN | string | | \*.google.com |
+action_result.data.\*.data.attributes.last_https_certificate.subject.CN | string | | \*.test.com |
 action_result.data.\*.data.attributes.last_https_certificate.subject.L | string | | San Francisco |
 action_result.data.\*.data.attributes.last_https_certificate.subject.O | string | | Cloudflare, Inc. |
 action_result.data.\*.data.attributes.last_https_certificate.subject.ST | string | | California |
@@ -2800,7 +2911,7 @@ action_result.data.\*.data.attributes.md5 | string | | e2fc714c4727ee9395f324cd2
 action_result.data.\*.data.attributes.meaningful_name | string | | Test_File.txt |
 action_result.data.\*.data.attributes.names.\* | string | | Test_File.txt |
 action_result.data.\*.data.attributes.network | string | | 1.1.1.0/24 |
-action_result.data.\*.data.attributes.outgoing_links.\* | string | | https://about.dummyurl.com/?utm_source=google-ZZ&utm_medium=referral&utm_campaign=hp-footer&fg=1 |
+action_result.data.\*.data.attributes.outgoing_links.\* | string | | https://about.test.com/?utm_source=dummy-1Z&utm_medium=test&utm=hp&fg=1 |
 action_result.data.\*.data.attributes.popularity_ranks.Alexa.rank | numeric | | 1 |
 action_result.data.\*.data.attributes.popularity_ranks.Alexa.timestamp | numeric | | 1684083480 |
 action_result.data.\*.data.attributes.popularity_ranks.Cisco Umbrella.rank | numeric | | 1 |
@@ -2844,7 +2955,7 @@ action_result.data.\*.data.attributes.rdap.events.\*.event_date | string | | 202
 action_result.data.\*.data.attributes.rdap.events.\*.links.\* | string | | |
 action_result.data.\*.data.attributes.rdap.handle | string | | 2138514_DOMAIN_COM-VRSN |
 action_result.data.\*.data.attributes.rdap.lang | string | | |
-action_result.data.\*.data.attributes.rdap.ldh_name | string | | google.com |
+action_result.data.\*.data.attributes.rdap.ldh_name | string | | test.com |
 action_result.data.\*.data.attributes.rdap.links.\* | string | | |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.entities.\* | string | | |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.events.\*.event_action | string | | last changed |
@@ -2853,7 +2964,7 @@ action_result.data.\*.data.attributes.rdap.nameservers.\*.events.\*.event_date |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.events.\*.links.\* | string | | |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.handle | string | | |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.lang | string | | |
-action_result.data.\*.data.attributes.rdap.nameservers.\*.ldh_name | string | | ns1.google.com |
+action_result.data.\*.data.attributes.rdap.nameservers.\*.ldh_name | string | | abc.test.com |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.links.\* | string | | |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.notices.\* | string | | |
 action_result.data.\*.data.attributes.rdap.nameservers.\*.object_class_name | string | | nameserver |
@@ -2888,7 +2999,7 @@ action_result.data.\*.data.attributes.rdap.switch_name | string | | |
 action_result.data.\*.data.attributes.rdap.type | string | | |
 action_result.data.\*.data.attributes.rdap.unicode_name | string | | |
 action_result.data.\*.data.attributes.rdap.variants.\* | string | | |
-action_result.data.\*.data.attributes.redirection_chain.\* | string | | https://www.google.com/ |
+action_result.data.\*.data.attributes.redirection_chain.\* | string | | https://www.test.com/ |
 action_result.data.\*.data.attributes.registrar | string | | MarkMonitor Inc. |
 action_result.data.\*.data.attributes.reputation | numeric | | -1 |
 action_result.data.\*.data.attributes.sha1 | string | | 81fe8bfe87576c3ecb22426f8e57847382917acf |
@@ -2906,7 +3017,7 @@ action_result.data.\*.data.attributes.threat_severity.threat_severity_data.has_b
 action_result.data.\*.data.attributes.threat_severity.threat_severity_level | string | | SEVERITY_NONE |
 action_result.data.\*.data.attributes.threat_severity.version | numeric | | 5 |
 action_result.data.\*.data.attributes.times_submitted | numeric | | 84 |
-action_result.data.\*.data.attributes.title | string | | Google |
+action_result.data.\*.data.attributes.title | string | | Test |
 action_result.data.\*.data.attributes.tld | string | | com |
 action_result.data.\*.data.attributes.total_votes.harmless | numeric | | |
 action_result.data.\*.data.attributes.total_votes.malicious | numeric | | 1 |
@@ -2915,7 +3026,7 @@ action_result.data.\*.data.attributes.type_extension | string | | txt |
 action_result.data.\*.data.attributes.type_tag | string | | text |
 action_result.data.\*.data.attributes.type_tags.\* | string | | text |
 action_result.data.\*.data.attributes.unique_sources | numeric | | 62 |
-action_result.data.\*.data.attributes.url | string | | https://www.google.com/ |
+action_result.data.\*.data.attributes.url | string | | https://www.test.com/ |
 action_result.data.\*.data.attributes.vhash | string | | 9eecb7db59d16c80417c72d1e1f4fbf1 |
 action_result.data.\*.data.attributes.whois | string | | Dummy Whois |
 action_result.data.\*.data.attributes.whois_date | numeric | | 1746621240 |
@@ -2941,7 +3052,7 @@ action_result.data.\*.data.relationships.related_threat_actors.data.\* | string 
 action_result.data.\*.data.relationships.related_threat_actors.links.self | string | | https://www.virustotal.com/api/v3/files/88d4266fd4e6338d13b845fcf289579d209c897823b9217da3e161936f031589/related_threat_actors?limit=20&attributes=name%2Cid%2Corigin%2Ccollection_type%2Cdescription%2Ctargeted_regions%2Ctargeted_industries%2Csponsor_region |
 action_result.data.\*.data.relationships.reports.data.\*.attributes.collection_type | string | | report |
 action_result.data.\*.data.relationships.reports.data.\*.attributes.name | string | | QATEST-TestReport-CMS Migration - Version:1 |
-action_result.data.\*.data.relationships.reports.data.\*.attributes.origin | string | | Google Threat Intelligence |
+action_result.data.\*.data.relationships.reports.data.\*.attributes.origin | string | | Test Data |
 action_result.data.\*.data.relationships.reports.data.\*.attributes.source_regions_hierarchy.\*.confidence | string | | possible |
 action_result.data.\*.data.relationships.reports.data.\*.attributes.source_regions_hierarchy.\*.country | string | | Bangladesh |
 action_result.data.\*.data.relationships.reports.data.\*.attributes.source_regions_hierarchy.\*.country_iso2 | string | | BD |
@@ -3169,7 +3280,7 @@ action_result.data.\*.data.attributes.motivations.\* | string | | |
 action_result.data.\*.data.attributes.mve_id | string | | MVE-2021-8671 |
 action_result.data.\*.data.attributes.name | string | | CVE-2021-42758 |
 action_result.data.\*.data.attributes.operating_systems.\* | string | | |
-action_result.data.\*.data.attributes.origin | string | | Google Threat Intelligence |
+action_result.data.\*.data.attributes.origin | string | | Test Data |
 action_result.data.\*.data.attributes.predicted_risk_rating | string | | MEDIUM |
 action_result.data.\*.data.attributes.priority | string | | P3 |
 action_result.data.\*.data.attributes.private | boolean | | True |
@@ -3244,7 +3355,7 @@ DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
 action_result.status | string | | success failed |
 action_result.parameter.id | string | | |
 action_result.parameter.status | string | | new |
-action_result.parameter.tags | string | | test_tag test_tag2 |
+action_result.parameter.tags | string | | test_tag |
 action_result.data | string | | |
 action_result.data.\*.ai_doc_summary | string | | Dummy AI summary |
 action_result.data.\*.alert_summary | string | | Dummy Alert summary |
@@ -3272,7 +3383,7 @@ action_result.data.\*.severity | string | | low |
 action_result.data.\*.severity_reasoning.rule | string | | |
 action_result.data.\*.status | string | | new |
 action_result.data.\*.tags.\* | string | | test_tag |
-action_result.data.\*.title | string | | Found topic "amazon" posted by actor "Faramarz Apllanadi" on Telegram channel "szpmarket" |
+action_result.data.\*.title | string | | Found posted by actor "test" on Telegram channel "test" |
 action_result.data.\*.topic_matches.\*.topic_id | string | | doc_type:message |
 action_result.data.\*.topic_matches.\*.value | string | | message |
 action_result.data.\*.topics_url | string | | https://api.intelligence.mandiant.com/v4/dtm/docs/message/4cab55d4-45df-4f27-97f4-2c3392cea967/topics |
@@ -3311,6 +3422,102 @@ action_result.data.\*.result | string | | open_triaged |
 action_result.data.\*.success | boolean | | True |
 action_result.summary | string | | |
 action_result.message | string | | Action has been executed successfully |
+summary.total_objects | numeric | | 1 |
+summary.total_objects_successful | numeric | | 1 |
+
+## action: 'get rs alert'
+
+Retrieve Relevance System Alert details by alert ID
+
+Type: **investigate** <br>
+Read only: **True**
+
+#### Action Parameters
+
+PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
+--------- | -------- | ----------- | ---- | --------
+**alert_id** | required | The ID of the RS alert to retrieve | string | `gti rs alert id` |
+
+#### Action Output
+
+DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
+--------- | ---- | -------- | --------------
+action_result.status | string | | success failed |
+action_result.parameter.alert_id | string | `gti rs alert id` | f7test7d-test-48b5-test-aee60dtestc9 |
+action_result.data | string | | |
+action_result.data.\*.aiSummary | string | | Test Summary of the alert |
+action_result.data.\*.alert_id | string | `gti rs alert id` | f7test7d-test-48b5-test-aee60dtestc9 |
+action_result.data.\*.audit.createTime | string | | 2026-04-28T06:22:19.718658426Z |
+action_result.data.\*.audit.creator | string | | backend |
+action_result.data.\*.audit.updateTime | string | | 2026-04-28T06:40:33.274624392Z |
+action_result.data.\*.audit.updater | string | | 0x1000003test8:test6XjEMFlAtestxfGhI0X6fDDtestW84aqGU# |
+action_result.data.\*.detail.dataLeak.severity | string | | MEDIUM |
+action_result.data.\*.detail.detailType | string | | data_leak |
+action_result.data.\*.displayName | string | | Potential Threat to Information Technology and Services Sector |
+action_result.data.\*.etag | string | | W/"32-420a6fa5f712ctest08048d81053btest2e24f53da5d84d3198dda00a6" |
+action_result.data.\*.findingCount | string | | 1 |
+action_result.data.\*.name | string | | projects/gti-test0410-test-45a8-test-bf/alerts/f7test7d-test-48b5-test-aee60dtestc9 |
+action_result.data.\*.priorityAnalysis.priorityLevel | string | | PRIORITY_LEVEL_LOW |
+action_result.data.\*.priorityAnalysis.reasoning | string | | Review this finding as a secondary priority. While the leak originates from a third-party site, the exposure of employee professional data increases the risk of targeted social engineering against your engineering staff. |
+action_result.data.\*.relevanceAnalysis.confidence | string | | CONFIDENCE_LEVEL_HIGH |
+action_result.data.\*.relevanceAnalysis.reasoning | string | | The leak explicitly targets 'REMOTE3.CO', a platform for web3 and crypto jobs, which is not an entity or subsidiary of Crest Data. While the database contains professional profiles (LinkedIn, GitHub, skills) that could include Crest Data employees, the Client is not the primary target. |
+action_result.data.\*.relevanceAnalysis.relevanceLevel | string | | RELEVANCE_LEVEL_LOW |
+action_result.data.\*.relevanceAnalysis.relevant | boolean | | True False |
+action_result.data.\*.severityAnalysis.confidence | string | | CONFIDENCE_LEVEL_HIGH |
+action_result.data.\*.severityAnalysis.reasoning | string | | The leak contains professional PII, including email addresses, GitHub URLs, and LinkedIn profiles. For any Client employees included, this facilitates targeted phishing or social engineering, though it does not represent a direct breach of Client systems. |
+action_result.data.\*.severityAnalysis.severityLevel | string | | SEVERITY_LEVEL_MEDIUM |
+action_result.data.\*.state | string | | BENIGN |
+action_result.summary | string | | |
+action_result.message | string | | Successfully fetched RS alert details |
+summary.total_objects | numeric | | 1 |
+summary.total_objects_successful | numeric | | 1 |
+
+## action: 'update rs alert status'
+
+Update the status of an Relevance System alert
+
+Type: **generic** <br>
+Read only: **False**
+
+#### Action Parameters
+
+PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
+--------- | -------- | ----------- | ---- | --------
+**alert_id** | required | The ID of the RS alert | string | `gti rs alert id` |
+**status** | required | Status to set for the alert | string | |
+
+#### Action Output
+
+DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
+--------- | ---- | -------- | --------------
+action_result.status | string | | success failed |
+action_result.parameter.alert_id | string | `gti rs alert id` | alert123 |
+action_result.parameter.status | string | | benign |
+action_result.data | string | | |
+action_result.data.\*.aiSummary | string | | Test Summary of the alert |
+action_result.data.\*.alert_id | string | `gti rs alert id` | f7test7d-test-48b5-test-aee60dtestc9 |
+action_result.data.\*.audit.createTime | string | | 2026-04-28T06:22:19.718658426Z |
+action_result.data.\*.audit.creator | string | | backend |
+action_result.data.\*.audit.updateTime | string | | 2026-04-28T06:40:33.274624392Z |
+action_result.data.\*.audit.updater | string | | 0x1000003a782a8:AEjPq6XjEMFlA6hiVxfGhI0X6fDDjbrPW84aqGU# |
+action_result.data.\*.detail.dataLeak.severity | string | | MEDIUM |
+action_result.data.\*.detail.detailType | string | | data_leak |
+action_result.data.\*.displayName | string | | Potential Threat to Information Technology and Services Sector |
+action_result.data.\*.etag | string | | W/"32-420a6fa5f712ctest08048d81053btest2e24f53da5d84d3198dda00a6" |
+action_result.data.\*.findingCount | string | | 1 |
+action_result.data.\*.name | string | | projects/gti-test0410-test-45a8-test-bf/alerts/f7test7d-test-48b5-test-aee60dtestc9 |
+action_result.data.\*.priorityAnalysis.priorityLevel | string | | PRIORITY_LEVEL_LOW |
+action_result.data.\*.priorityAnalysis.reasoning | string | | Review this finding as a secondary priority. While the leak originates from a third-party site, the exposure of employee professional data increases the risk of targeted social engineering against your engineering staff. |
+action_result.data.\*.relevanceAnalysis.confidence | string | | CONFIDENCE_LEVEL_HIGH |
+action_result.data.\*.relevanceAnalysis.reasoning | string | | The leak explicitly targets 'REMOTE3.CO', a platform for web3 and crypto jobs, which is not an entity or subsidiary of Crest Data. While the database contains professional profiles (LinkedIn, GitHub, skills) that could include Crest Data employees, the Client is not the primary target. |
+action_result.data.\*.relevanceAnalysis.relevanceLevel | string | | RELEVANCE_LEVEL_LOW |
+action_result.data.\*.relevanceAnalysis.relevant | boolean | | True False |
+action_result.data.\*.severityAnalysis.confidence | string | | CONFIDENCE_LEVEL_HIGH |
+action_result.data.\*.severityAnalysis.reasoning | string | | The leak contains professional PII, including email addresses, GitHub URLs, and LinkedIn profiles. For any Client employees included, this facilitates targeted phishing or social engineering, though it does not represent a direct breach of Client systems. |
+action_result.data.\*.severityAnalysis.severityLevel | string | | SEVERITY_LEVEL_MEDIUM |
+action_result.data.\*.state | string | | BENIGN |
+action_result.summary | string | | |
+action_result.message | string | | Successfully updated RS alert status |
 summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
 

@@ -4,9 +4,9 @@ Supercharge your Splunk SOAR with Google Threat Intelligence, unifying unparalle
 
 # Explanation of Data Ingestion
 
-This integration supports three types of data ingestion: **IOC Stream**, **DTM Alerts**, and **ASM Issues**. If an ingestion type is not selected while configuring asset, data ingestion will not occur. Only one data ingestion type can be configured per asset. To configure multiple data ingestions, set up multiple assets.
+This integration supports four types of data ingestion: **IOC Stream**, **DTM Alerts**, **ASM Issues**, and **RS Alerts**. If an ingestion type is not selected while configuring asset, data ingestion will not occur. Only one data ingestion type can be configured per asset. To configure multiple data ingestions, set up multiple assets.
 
-The below details describes the configuration and usage of the GTI integration for Splunk SOAR, focusing on the three on-poll ingestion types: **IOC Stream**, **DTM Alerts**, and **ASM Issues**.
+The below details describes the configuration and usage of the GTI integration for Splunk SOAR, focusing on the four on-poll ingestion types: **IOC Stream**, **DTM Alerts**, **ASM Issues**, and **RS Alerts**.
 
 ______________________________________________________________________
 
@@ -14,7 +14,7 @@ ______________________________________________________________________
 
 ### Poll Now Feature
 
-The **Poll Now** action retrieves the most recent 1 hour of data for all three ingestion types: **IOC Stream**, **DTM Alerts**, and **ASM Issues**.
+The **Poll Now** action retrieves the most recent 1 hour of data for all four ingestion types: **IOC Stream**, **DTM Alerts**, **ASM Issues**, and **RS Alerts**.
 
 **Important Notes:**
 
@@ -28,7 +28,7 @@ The **Poll Now** action retrieves the most recent 1 hour of data for all three i
 Set the ingestion interval to 1 hour for optimal performance and timely data updates. Please note that using very short intervals may negatively impact data ingestion efficiency and the overall performance of your instance.
 
 **Limit Parameter:**\
-The `limit` parameter controls the maximum number of records ingested per poll. The maximum allowed value is **1000**; if a higher or invalid value is set, it will be ignored and **1000** will be used.
+The `limit` parameter controls the maximum number of records ingested per poll. The maximum allowed value is **1000**; if a higher or invalid value is set, it will be ignored and **1000** will be used. This parameter applies to all four ingestion types.
 
 **Lookback Days Parameter:**\
 The `lookback_days` parameter determines how many days back the integration will look for data during the initial poll. The maximum allowed value is **5**; if a higher or invalid value is set, it will be ignored and **5** will be used. Days are calculated as the absolute day difference from the current time.
@@ -41,6 +41,7 @@ ______________________________________________________________________
 
   - **Descriptors Only:** Includes only object descriptors, not full VT objects (boolean, default: false).
   - **Filter:** Filter string to filter IOCs (string). This is a recommended option for the IOC Stream data ingestion type to filter relevant IOCs and reduce noise.
+    **Note:** This field is shared with the **RS Alerts** ingestion type, which uses a different filter syntax; see the [Relevance System Alerts](#relevance-system-alerts) section for details.
 
 - **Container Creation:**\
   All IOC Stream data for a given UTC day will be ingested into a single container. A new container is created each day (UTC-based).
@@ -136,5 +137,112 @@ ______________________________________________________________________
 
 - **Closing ASM Issues in GTI:**\
   When an ASM issue container is closed in Splunk SOAR, the playbook provided in this [repository](https://github.com/virusTotal/gti-soar-playbooks/tree/main/Splunk%20SOAR) automatically closes the corresponding issue in GTI.
+
+______________________________________________________________________
+
+## Relevance System Alerts
+
+- **Parameters:**
+
+  - **Project ID (RS Alerts):** The GCP project ID associated with your RS alerts (string, **required**). RS Alerts ingestion will fail if this field is not configured.
+
+  - **Filter:** Shared with IOC Stream. For Relevance System Alerts, this field accepts filter expression in the documentation [here](https://gtidocs.virustotal.com/reference/list-alerts) to narrow down alerts. `audit.update_time` conditions are **automatically removed** from the filter as the integration manages time-windowing internally using the **Lookback Days** parameter. Do not include `audit.update_time` in the filter string, as it will be stripped before the API call.
+
+    - **Example filters:**
+      - `state = "NEW"`
+      - `severityAnalysis.severityLevel = "SEVERITY_LEVEL_HIGH"`
+
+  - **Limit:** Maximum number of RS alerts to ingest per poll (max: 1000).
+
+  - **Lookback Days:** Number of days of historical data to retrieve during the initial poll (max: 5).
+
+- **Status Mapping of RS Alerts:**
+
+  | RS Alert State | SOAR Container Status |
+  |----------------------|----------------------|
+  | New | New |
+  | Read | Open |
+  | Triaged | Open |
+  | Escalated | Open |
+  | Resolved | Closed |
+  | Benign | Closed |
+  | False Positive | Closed |
+  | Tracked Externally | Closed |
+  | Not Actionable | Closed |
+  | Duplicate | Closed |
+
+- **Severity Mapping of Relevance System Alerts:**
+
+  | RS Alert Severity | SOAR Container Severity |
+  |--------------------|------------------------|
+  | Severity Level Low | Low |
+  | Severity Level Medium | Medium |
+  | Severity Level High | High |
+
+- **Container Creation:**\
+  Each Relevance System Alert results in one container, identified by the alert's unique name (used as `source_data_identifier`). If the same alert is encountered in a subsequent poll, the existing container is reused and a new artifact is appended to it.
+
+- **Container Updates:**\
+  The container's status and severity are updated on every poll based on the current state and severity level of the alert in GTI. Containers for alerts in a terminal state (Resolved, Benign, False Positive, Tracked Externally, Not Actionable, Duplicate) are automatically tagged with `closed_on_gti`.
+
+- **Closing RS Alert in GTI:**\
+  When a RS alert container is closed in Splunk SOAR, the playbook provided in this [repository](https://github.com/virusTotal/gti-soar-playbooks/tree/main/Splunk%20SOAR) automatically updates the status of the corresponding issue in GTI to **Resolved**.
+
+______________________________________________________________________
+
+### Prerequisites for RS Alert Access
+
+Access to The Relevance System requires an active Google Threat Intelligence license. Your experience within the system will depend on your assigned role:
+
+- **GTI Alerts Admin:** Required to set up the initial Organization Profile, configure integrations, and manage system-wide alert thresholds.
+- **GTI Alerts User:** Designed for day-to-day analysts. Users can view dashboards, investigate alerts, change alert statuses, and provide feedback, but cannot change the core organizational configuration.
+
+For more information, refer to the [Dark Web Intel documentation](https://gtidocs.virustotal.com/docs/dark-web-intel).
+
+______________________________________________________________________
+
+## Steps to Configure the Google Threat Intelligence Splunk SOAR Asset
+
+Follow these steps to create an asset for the Splunk SOAR Platform:
+
+1. **Log in to the Google Threat Intelligence Platform.**
+
+1. **Obtain your API Key:**
+
+   - From the Left Navbar/Menu, click **API Key**.
+   - Access your API key.
+
+1. **Obtain your Project ID:**
+
+   - In the URL when accessing GTI Alerts, for example: `https://proactive.virustotal.com/alerts?...&project=projects%2F**your-project-id**`
+   - The Project ID is `your-project-id`.
+
+1. **Log in to your Splunk SOAR Platform.**
+
+1. **Navigate to the Apps section:**
+
+   - Navigate to the Home dropdown and select **Apps**.
+   - Search for **Google Threat Intelligence** from the search box.
+
+1. **Create a new asset:**
+
+   - Click on the **CONFIGURE NEW ASSET** button.
+
+1. **Configure Asset Info:**
+
+   - Navigate to the **Asset Info** tab.
+   - Enter the **Asset name** and **Asset description**.
+
+1. **Configure Asset Settings:**
+
+   - Navigate to the **Asset Settings** tab.
+   - Paste the **API key** of your Google Threat Intelligence Platform.
+   - Add the **Project ID** of your GTI instance in the **Project ID** parameter.
+
+1. **Save the asset.**
+
+1. **Test connectivity:**
+
+   - Click the **TEST CONNECTIVITY** button to test the connectivity of the Splunk SOAR server to the Google Threat Intelligence.
 
 ______________________________________________________________________

@@ -89,6 +89,9 @@ class GoogleThreatIntelligenceConnector(BaseConnector):
         # Create the util object and use it throughout the action lifecycle
         self.util = GoogleThreatIntelligenceUtils(self)
         self.validator = Validator()
+
+        self._state = self.util.decrypt_state(self._state, self.get_asset_id())
+
         # get the asset config
         self.config = self.get_config()
 
@@ -106,6 +109,7 @@ class GoogleThreatIntelligenceConnector(BaseConnector):
                 - `phantom.APP_ERROR`: The finalize failed
         """
         # Save the state, this data is saved across actions and app upgrades
+        self._state = self.util.encrypt_state(self._state, self.get_asset_id())
         self.save_state(self._state)
         return phantom.APP_SUCCESS
 
