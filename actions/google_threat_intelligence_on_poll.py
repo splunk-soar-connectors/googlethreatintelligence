@@ -464,7 +464,7 @@ class OnPoll(BaseAction):
             alert_id = alert.get("id")
             alert_title = alert.get("title")
             alert_description = alert.get("alert_summary")
-            alert_severity = alert.get("severity")
+            alert_severity = consts.DTM_SEVERITY_MAPPING.get(str(alert.get("severity", "")).lower(), "high")
             alert_status = alert.get("status")
             container_status = consts.DTM_STATUS_MAPPING.get(alert_status, "new")
             container_data = {
@@ -477,7 +477,7 @@ class OnPoll(BaseAction):
             ret_val, message, container_id = self._connector.save_container(container_data)
             if phantom.is_fail(ret_val):
                 self._connector.debug_print(f"Failed to create container: {message}")
-                return None
+                continue
             if message and message == "Duplicate container found":
                 self._connector.debug_print(f"Container already exists, skipping ingestion for alert: {alert_id}")
                 continue
@@ -496,7 +496,7 @@ class OnPoll(BaseAction):
 
             if phantom.is_fail(ret_val):
                 self._connector.debug_print(f"Failed to create artifact: {message}")
-                return None
+                continue
 
         if not self._is_poll_now:
             self._connector.debug_print(f"Checkpointing last alert time for DTM alerts: {latest_alert_time}")

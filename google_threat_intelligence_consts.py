@@ -118,6 +118,7 @@ PASS_ERROR_CODE = {
 }
 
 SEVERITY_MAPPING = {1: "High", 2: "High", 3: "Medium", 4: "Low", 5: "Low"}
+DTM_SEVERITY_MAPPING = {"high": "high", "medium": "medium", "low": "low"}
 
 # Map status of ASM issue to status of container
 ASM_STATUS_MAPPING = {
