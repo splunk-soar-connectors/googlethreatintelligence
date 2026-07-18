@@ -19,7 +19,7 @@ import json
 import re
 import time
 from datetime import UTC, datetime, timedelta
-from urllib.parse import quote, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qsl, quote, urlencode, urlparse, urlunparse
 
 import encryption_helper
 import phantom.app as phantom
@@ -503,10 +503,18 @@ class GoogleThreatIntelligenceUtils:
             self._connector.debug_print(f"The limit for DTM alerts ({limit}) is greater than the page size ({page_size}).")
             next_page_token = None
             remaining = limit
+            page_count = 0
+            max_pages = (limit + page_size - 1) // page_size + 2
+            seen_page_tokens = set()
             while remaining > 0:
+                if page_count >= max_pages:
+                    return action_result.set_status(phantom.APP_ERROR, "DTM pagination stopped after reaching its page safety limit"), []
+
                 if next_page_token:
                     parsed = urlparse(endpoint)
-                    new_query = urlencode({"page": next_page_token})
+                    query = [(key, value) for key, value in parse_qsl(parsed.query, keep_blank_values=True) if key != "page"]
+                    query.append(("page", next_page_token))
+                    new_query = urlencode(query)
                     updated = parsed._replace(query=new_query)
                     updated_endpoint = urlunparse(updated)
                 else:
@@ -518,6 +526,7 @@ class GoogleThreatIntelligenceUtils:
                 if phantom.is_fail(ret_val):
                     return ret_val, []
 
+                page_count += 1
                 alerts_list = json_resp.get("alerts", [])
                 alert_count = len(alerts_list)
                 if remaining <= alert_count:
@@ -539,7 +548,13 @@ class GoogleThreatIntelligenceUtils:
                     self._connector.debug_print("No page token found in the 'next' page link.")
                     break  # Break as there is no next page
 
-                next_page_token = m.group(1)
+                new_page_token = m.group(1)
+                if alert_count == 0:
+                    return action_result.set_status(phantom.APP_ERROR, "DTM pagination stopped because the API returned an empty page"), []
+                if new_page_token in seen_page_tokens:
+                    return action_result.set_status(phantom.APP_ERROR, "DTM pagination stopped because the API repeated a page token"), []
+                seen_page_tokens.add(new_page_token)
+                next_page_token = new_page_token
                 self._connector.debug_print(f"Remaining alerts to fetch: {remaining}")
             return phantom.APP_SUCCESS, results
 
