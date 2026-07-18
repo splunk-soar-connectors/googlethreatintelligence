@@ -13,7 +13,7 @@
 # either express or implied. See the License for the specific language governing permissions
 # and limitations under the License.
 
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 import phantom.app as phantom
 import phantom.rules as ph_rules
@@ -130,6 +130,21 @@ class ScanPrivateFile(BaseAction):
         except KeyError:
             return (
                 action_result.set_status(phantom.APP_ERROR, "Couldn't fetch URL for uploading file"),
+                None,
+            )
+
+        parsed_upload_url = urlsplit(upload_url)
+        try:
+            trusted_upload_url = (
+                parsed_upload_url.scheme == "https"
+                and parsed_upload_url.hostname == "www.virustotal.com"
+                and parsed_upload_url.port in (None, 443)
+            )
+        except ValueError:
+            trusted_upload_url = False
+        if not trusted_upload_url:
+            return (
+                action_result.set_status(phantom.APP_ERROR, "The API returned an upload URL outside the trusted VirusTotal origin"),
                 None,
             )
 
