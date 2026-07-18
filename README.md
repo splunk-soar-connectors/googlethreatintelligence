@@ -343,7 +343,7 @@ Read only: **True**
 PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 --------- | -------- | ----------- | ---- | --------
 **file_hash** | required | Vault ID of the file to scan | string | `vault id` `sha1` `sha256` |
-**password** | optional | Password to decompress and scan a file contained in a protected ZIP file | string | |
+**password** | optional | Password to decompress and scan a file contained in a protected ZIP file | password | |
 **command_line** | optional | Command line arguments to use when running the file in sandboxes | string | |
 **disable_sandbox** | optional | If true, then the file won't be detonated in sandbox environments. False by default | string | |
 **enable_internet** | optional | If the file should have internet access when running in sandboxes. False by default | string | |
@@ -367,7 +367,6 @@ action_result.parameter.interaction_sandbox | string | | |
 action_result.parameter.interaction_timeout | numeric | | 60 |
 action_result.parameter.intercept_tls | string | | false |
 action_result.parameter.locale | string | | EN_US |
-action_result.parameter.password | string | | |
 action_result.parameter.retention_period_days | numeric | | 1 |
 action_result.parameter.storage_region | string | | |
 action_result.data | string | | |
@@ -435,6 +434,7 @@ action_result.summary | string | | |
 action_result.message | string | | Action has been executed successfully |
 summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
+action_result.parameter.password | password | | |
 
 ## action: 'get ioc report'
 
@@ -448,7 +448,7 @@ Read only: **True**
 PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 --------- | -------- | ----------- | ---- | --------
 **entity** | required | Entity (IP, URL, Domain, File [Vault ID in SOAR or MD5/SHA1/SHA256]) to get the report | string | `vault id` `sha1` `sha256` `md5` `ip` `ipv6` `url` `domain` |
-**password** | optional | Password to decompress and scan a file contained in a protected ZIP file | string | |
+**password** | optional | Password to decompress and scan a file contained in a protected ZIP file | password | |
 
 #### Action Output
 
@@ -456,7 +456,6 @@ DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
 --------- | ---- | -------- | --------------
 action_result.status | string | | success failed |
 action_result.parameter.entity | string | `vault id` `sha1` `sha256` `md5` `ip` `ipv6` `url` `domain` | |
-action_result.parameter.password | string | | |
 action_result.data | string | | |
 action_result.data.\*.data.attributes.as_owner | string | | CLOUDFLARENET |
 action_result.data.\*.data.attributes.asn | numeric | | 13335 |
@@ -1504,6 +1503,7 @@ action_result.summary | string | | |
 action_result.message | string | | Action has been executed successfully |
 summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
+action_result.parameter.password | password | | |
 
 ## action: 'get comments'
 
@@ -1517,7 +1517,7 @@ Read only: **True**
 PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 --------- | -------- | ----------- | ---- | --------
 **entity** | required | Entity (IP, URL, Domain, File [Vault ID in SOAR or MD5/SHA1/SHA256]) to get the report | string | `vault id` `sha1` `sha256` `md5` `ip` `ipv6` `url` `domain` |
-**password** | optional | Password to decompress and scan a file contained in a protected ZIP file | string | |
+**password** | optional | Password to decompress and scan a file contained in a protected ZIP file | password | |
 **limit** | optional | Maximum comments to be fetched | numeric | |
 
 #### Action Output
@@ -1527,7 +1527,6 @@ DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
 action_result.status | string | | success failed |
 action_result.parameter.entity | string | `vault id` `sha1` `sha256` `md5` `ip` `ipv6` `url` `domain` | |
 action_result.parameter.limit | string | | 40 |
-action_result.parameter.password | string | | |
 action_result.data | string | | |
 action_result.data.\*.attributes.date | numeric | | 1740599030 |
 action_result.data.\*.attributes.html | string | | rest |
@@ -1547,6 +1546,7 @@ action_result.summary | string | | |
 action_result.message | string | | Action has been executed successfully |
 summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
+action_result.parameter.password | password | | |
 
 ## action: 'get vulnerability associations'
 
@@ -1560,7 +1560,7 @@ Read only: **True**
 PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 --------- | -------- | ----------- | ---- | --------
 **entity** | required | Entity (IP, URL, Domain, File [Vault ID in SOAR or MD5/SHA1/SHA256]) to get the report | string | `vault id` `sha1` `sha256` `md5` `ip` `ipv6` `url` `domain` |
-**password** | optional | Password to decompress and scan a file contained in a protected ZIP file | string | |
+**password** | optional | Password to decompress and scan a file contained in a protected ZIP file | password | |
 **limit** | optional | Maximum number of vulnerabilities to fetch | numeric | |
 
 #### Action Output
@@ -1570,7 +1570,6 @@ DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
 action_result.status | string | | success failed |
 action_result.parameter.entity | string | `vault id` `sha1` `sha256` `md5` `ip` `ipv6` `url` `domain` | |
 action_result.parameter.limit | string | | 1 |
-action_result.parameter.password | string | | |
 action_result.data | string | | |
 action_result.data.\*.attributes.affected_systems.\* | string | | |
 action_result.data.\*.attributes.aggregations.files.attack_tactics.\*.count | numeric | | 2 |
@@ -1831,6 +1830,7 @@ action_result.summary | string | | |
 action_result.message | string | | Action has been executed successfully |
 summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
+action_result.parameter.password | password | | |
 
 ## action: 'get file sandbox report'
 
@@ -1844,7 +1844,7 @@ Read only: **True**
 PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 --------- | -------- | ----------- | ---- | --------
 **file_hash** | required | Vault ID of the file or file hash | string | `vault id` `sha1` `sha256` `md5` |
-**password** | optional | Password to decompress and scan a file contained in a protected ZIP file | string | |
+**password** | optional | Password to decompress and scan a file contained in a protected ZIP file | password | |
 
 #### Action Output
 
@@ -1852,7 +1852,6 @@ DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
 --------- | ---- | -------- | --------------
 action_result.status | string | | success failed |
 action_result.parameter.file_hash | string | `vault id` `sha1` `sha256` `md5` | |
-action_result.parameter.password | string | | |
 action_result.data | string | | |
 action_result.data.\*.data.\*.attributes.analysis_date | numeric | | 1661473860 |
 action_result.data.\*.data.\*.attributes.behash | string | | eb90f9e100a681a7558a39189be8c486 |
@@ -1922,6 +1921,7 @@ action_result.summary | string | | |
 action_result.message | string | | Action has been executed successfully |
 summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
+action_result.parameter.password | password | | |
 
 ## action: 'scan private url'
 
@@ -1988,7 +1988,7 @@ Read only: **True**
 PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 --------- | -------- | ----------- | ---- | --------
 **entity** | required | Entity (IP, URL, Domain, File [Vault ID in SOAR or MD5/SHA1/SHA256]) to fetch the Curated Threat Actors/Malware Families/Campaigns/Reports | string | `vault id` `sha1` `sha256` `md5` `ip` `ipv6` `url` `domain` |
-**password** | optional | Password to decompress and scan a file contained in a protected ZIP file | string | |
+**password** | optional | Password to decompress and scan a file contained in a protected ZIP file | password | |
 
 #### Action Output
 
@@ -1996,7 +1996,6 @@ DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
 --------- | ---- | -------- | --------------
 action_result.status | string | | success failed |
 action_result.parameter.entity | string | `vault id` `sha1` `sha256` `md5` `ip` `ipv6` `url` `domain` | |
-action_result.parameter.password | string | | |
 action_result.data | string | | |
 action_result.data.\*.data.attributes.as_owner | string | | CLOUDFLARENET |
 action_result.data.\*.data.attributes.asn | numeric | | 13335 |
@@ -3091,6 +3090,7 @@ action_result.summary | string | | |
 action_result.message | string | | Action has been executed successfully |
 summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
+action_result.parameter.password | password | | |
 
 ## action: 'add comment'
 
@@ -3105,7 +3105,7 @@ PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 --------- | -------- | ----------- | ---- | --------
 **entity** | required | Entity (IP, URL, Domain, File [Vault ID in SOAR or MD5/SHA1/SHA256]) to add comment | string | `vault id` `sha1` `sha256` `md5` `ip` `ipv6` `url` `domain` |
 **comment_text** | required | Add the comment text | string | |
-**password** | optional | Password to decompress and scan a file contained in a protected ZIP file | string | |
+**password** | optional | Password to decompress and scan a file contained in a protected ZIP file | password | |
 
 #### Action Output
 
@@ -3114,7 +3114,6 @@ DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
 action_result.status | string | | success failed |
 action_result.parameter.comment_text | string | | Added comment |
 action_result.parameter.entity | string | `vault id` `sha1` `sha256` `md5` `ip` `ipv6` `url` `domain` | |
-action_result.parameter.password | string | | comment |
 action_result.data | string | | |
 action_result.data.\*.data.attributes.date | numeric | | 1744699510 |
 action_result.data.\*.data.attributes.html | string | | Added comment to File |
@@ -3130,6 +3129,7 @@ action_result.summary | string | | |
 action_result.message | string | | Action has been executed successfully |
 summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
+action_result.parameter.password | password | | |
 
 ## action: 'delete comment'
 

@@ -158,7 +158,7 @@
                 "password": {
                     "description": "Password to decompress and scan a file contained in a protected ZIP file",
                     "order": 1,
-                    "data_type": "string"
+                    "data_type": "password"
                 },
                 "command_line": {
                     "description": "Command line arguments to use when running the file in sandboxes",
@@ -282,10 +282,6 @@
                     "example_values": [
                         "EN_US"
                     ]
-                },
-                {
-                    "data_path": "action_result.parameter.password",
-                    "data_type": "string"
                 },
                 {
                     "data_path": "action_result.parameter.retention_period_days",
@@ -781,6 +777,10 @@
                     "example_values": [
                         1
                     ]
+                },
+                {
+                    "data_path": "action_result.parameter.password",
+                    "data_type": "password"
                 }
             ],
             "render": {
@@ -817,7 +817,7 @@
                 "password": {
                     "description": "Password to decompress and scan a file contained in a protected ZIP file",
                     "order": 1,
-                    "data_type": "string"
+                    "data_type": "password"
                 }
             },
             "output": [
@@ -844,10 +844,6 @@
                         "url",
                         "domain"
                     ]
-                },
-                {
-                    "data_path": "action_result.parameter.password",
-                    "data_type": "string"
                 },
                 {
                     "data_path": "action_result.data",
@@ -7792,6 +7788,10 @@
                     "example_values": [
                         1
                     ]
+                },
+                {
+                    "data_path": "action_result.parameter.password",
+                    "data_type": "password"
                 }
             ],
             "render": {
@@ -7828,7 +7828,7 @@
                 "password": {
                     "description": "Password to decompress and scan a file contained in a protected ZIP file",
                     "order": 1,
-                    "data_type": "string"
+                    "data_type": "password"
                 },
                 "limit": {
                     "description": "Maximum comments to be fetched",
@@ -7865,10 +7865,6 @@
                     "example_values": [
                         "40"
                     ]
-                },
-                {
-                    "data_path": "action_result.parameter.password",
-                    "data_type": "string"
                 },
                 {
                     "data_path": "action_result.data",
@@ -7999,6 +7995,10 @@
                     "example_values": [
                         1
                     ]
+                },
+                {
+                    "data_path": "action_result.parameter.password",
+                    "data_type": "password"
                 }
             ],
             "render": {
@@ -8035,7 +8035,7 @@
                 "password": {
                     "description": "Password to decompress and scan a file contained in a protected ZIP file",
                     "order": 1,
-                    "data_type": "string"
+                    "data_type": "password"
                 },
                 "limit": {
                     "description": "Maximum number of vulnerabilities to fetch",
@@ -8072,10 +8072,6 @@
                     "example_values": [
                         "1"
                     ]
-                },
-                {
-                    "data_path": "action_result.parameter.password",
-                    "data_type": "string"
                 },
                 {
                     "data_path": "action_result.data",
@@ -9754,6 +9750,10 @@
                     "example_values": [
                         1
                     ]
+                },
+                {
+                    "data_path": "action_result.parameter.password",
+                    "data_type": "password"
                 }
             ],
             "render": {
@@ -9786,7 +9786,7 @@
                 "password": {
                     "description": "Password to decompress and scan a file contained in a protected ZIP file",
                     "order": 1,
-                    "data_type": "string"
+                    "data_type": "password"
                 }
             },
             "output": [
@@ -9807,10 +9807,6 @@
                         "sha256",
                         "md5"
                     ]
-                },
-                {
-                    "data_path": "action_result.parameter.password",
-                    "data_type": "string"
                 },
                 {
                     "data_path": "action_result.data",
@@ -10283,6 +10279,10 @@
                     "example_values": [
                         1
                     ]
+                },
+                {
+                    "data_path": "action_result.parameter.password",
+                    "data_type": "password"
                 }
             ],
             "render": {
@@ -10595,7 +10595,7 @@
                 "password": {
                     "description": "Password to decompress and scan a file contained in a protected ZIP file",
                     "order": 1,
-                    "data_type": "string"
+                    "data_type": "password"
                 }
             },
             "output": [
@@ -10622,10 +10622,6 @@
                         "url",
                         "domain"
                     ]
-                },
-                {
-                    "data_path": "action_result.parameter.password",
-                    "data_type": "string"
                 },
                 {
                     "data_path": "action_result.data",
@@ -17872,6 +17868,10 @@
                     "example_values": [
                         1
                     ]
+                },
+                {
+                    "data_path": "action_result.parameter.password",
+                    "data_type": "password"
                 }
             ],
             "render": {
@@ -17914,7 +17914,7 @@
                 "password": {
                     "description": "Password to decompress and scan a file contained in a protected ZIP file",
                     "order": 2,
-                    "data_type": "string"
+                    "data_type": "password"
                 }
             },
             "output": [
@@ -17947,13 +17947,6 @@
                         "ipv6",
                         "url",
                         "domain"
-                    ]
-                },
-                {
-                    "data_path": "action_result.parameter.password",
-                    "data_type": "string",
-                    "example_values": [
-                        "comment"
                     ]
                 },
                 {
@@ -18048,6 +18041,10 @@
                     "example_values": [
                         1
                     ]
+                },
+                {
+                    "data_path": "action_result.parameter.password",
+                    "data_type": "password"
                 }
             ],
             "render": {

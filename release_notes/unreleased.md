@@ -2,3 +2,4 @@
 
 * Reject private-file upload URLs outside the trusted VirusTotal HTTPS origin.
 * Validate and encode identifiers before inserting them into VirusTotal API paths.
+* Mask ZIP passwords and exclude them from persisted action-result parameters.
