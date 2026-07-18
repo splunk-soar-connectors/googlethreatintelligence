@@ -19,7 +19,7 @@ import json
 import re
 import time
 from datetime import UTC, datetime, timedelta
-from urllib.parse import urlencode, urlparse, urlunparse
+from urllib.parse import quote, urlencode, urlparse, urlunparse
 
 import encryption_helper
 import phantom.app as phantom
@@ -46,6 +46,13 @@ class GoogleThreatIntelligenceUtils:
 
     def __init__(self, connector=None):
         self._connector = connector
+
+    @staticmethod
+    def validate_and_encode_path_segment(action_result, value, field_name, pattern):
+        """Validate an opaque identifier and encode it as one URL path segment."""
+        if not isinstance(value, str) or re.fullmatch(pattern, value) is None:
+            return action_result.set_status(phantom.APP_ERROR, f"Invalid {field_name}"), None
+        return phantom.APP_SUCCESS, quote(value, safe="")
 
     def _get_error_message_from_exception(self, e):
         """
