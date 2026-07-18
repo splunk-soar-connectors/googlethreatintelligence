@@ -54,6 +54,28 @@ class GoogleThreatIntelligenceUtils:
             return action_result.set_status(phantom.APP_ERROR, f"Invalid {field_name}"), None
         return phantom.APP_SUCCESS, quote(value, safe="")
 
+    @classmethod
+    def redact_captured_http_credentials(cls, value):
+        """Mask credentials captured in upstream HTTP-analysis data before persistence."""
+        if isinstance(value, list):
+            return [cls.redact_captured_http_credentials(item) for item in value]
+        if not isinstance(value, dict):
+            return value
+
+        sanitized = {}
+        for key, item in value.items():
+            if key == "last_http_response_cookies" and isinstance(item, dict):
+                sanitized[key] = {cookie_name: "***" for cookie_name in item}
+            elif key == "last_http_response_headers" and isinstance(item, dict):
+                sanitized_headers = dict(item)
+                for header_name in sanitized_headers:
+                    if header_name.lower() in {"authorization", "cookie", "proxy-authorization", "set-cookie"}:
+                        sanitized_headers[header_name] = "***"
+                sanitized[key] = sanitized_headers
+            else:
+                sanitized[key] = cls.redact_captured_http_credentials(item)
+        return sanitized
+
     def _get_error_message_from_exception(self, e):
         """
         Extracts the error message and error code from an exception object.

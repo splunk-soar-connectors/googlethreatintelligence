@@ -115,6 +115,7 @@ class GetIocReport(BaseAction):
         if phantom.is_fail(ret_val):
             return self._action_result.get_status()
 
+        response = self._connector.util.redact_captured_http_credentials(response)
         if isinstance(response, list):
             for item in response:
                 self._action_result.add_data(item)

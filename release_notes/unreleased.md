@@ -6,3 +6,4 @@
 * Bound unlimited pagination and reject repeated API cursors.
 * Normalize DTM alert severity with a fail-high default and continue after individual ingestion failures.
 * Stop DTM pagination on empty pages, repeated tokens, or its calculated page cap.
+* Redact captured cookies and credential-bearing HTTP headers before persisting reports.
