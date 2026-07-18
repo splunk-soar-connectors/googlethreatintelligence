@@ -421,19 +421,29 @@ class GoogleThreatIntelligenceUtils:
             limit = 1000
 
         if limit is None:
+            page_count = 0
+            seen_cursors = set()
             while True:
+                if page_count >= consts.PAGINATION_MAX_PAGES:
+                    return action_result.set_status(phantom.APP_ERROR, "Pagination stopped after reaching the 500-page safety limit"), []
+
                 updated_endpoint = f"{endpoint}?limit=40" if "?" not in endpoint else f"{endpoint}&limit=40"
                 if cursor:
-                    updated_endpoint += f"&cursor={cursor}"
+                    updated_endpoint += f"&cursor={quote(cursor, safe='')}"
 
                 ret_val, json_resp = self.make_rest_call(updated_endpoint, action_result, method, **kwargs)
                 if phantom.is_fail(ret_val):
                     return ret_val, []
 
+                page_count += 1
                 results.extend(json_resp.get("data", []))
-                cursor = json_resp.get("meta", {}).get("cursor")
-                if not cursor:
+                next_cursor = json_resp.get("meta", {}).get("cursor")
+                if not next_cursor:
                     break
+                if next_cursor in seen_cursors:
+                    return action_result.set_status(phantom.APP_ERROR, "Pagination stopped because the API returned a repeated cursor"), []
+                seen_cursors.add(next_cursor)
+                cursor = next_cursor
         else:
             limit = int(limit)
             remaining = limit
