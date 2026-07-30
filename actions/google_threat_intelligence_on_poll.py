@@ -460,8 +460,10 @@ class OnPoll(BaseAction):
             return phantom.APP_SUCCESS, None
 
         latest_alert_time = data[0].get("created_at")
+        checkpoint_alert_time = None
         for alert in reversed(data):
             alert_id = alert.get("id")
+            alert_time = alert.get("created_at")
             alert_title = alert.get("title")
             alert_description = alert.get("alert_summary")
             alert_severity = consts.DTM_SEVERITY_MAPPING.get(str(alert.get("severity", "")).lower(), "high")
@@ -477,9 +479,10 @@ class OnPoll(BaseAction):
             ret_val, message, container_id = self._connector.save_container(container_data)
             if phantom.is_fail(ret_val):
                 self._connector.debug_print(f"Failed to create container: {message}")
-                continue
+                break
             if message and message == "Duplicate container found":
                 self._connector.debug_print(f"Container already exists, skipping ingestion for alert: {alert_id}")
+                checkpoint_alert_time = alert_time
                 continue
             dtm_cef = self.__get_cef_dtm(alert)
             artifact_data = {
@@ -496,13 +499,18 @@ class OnPoll(BaseAction):
 
             if phantom.is_fail(ret_val):
                 self._connector.debug_print(f"Failed to create artifact: {message}")
-                continue
+                break
+            checkpoint_alert_time = alert_time
+        else:
+            checkpoint_alert_time = latest_alert_time
 
-        if not self._is_poll_now:
-            self._connector.debug_print(f"Checkpointing last alert time for DTM alerts: {latest_alert_time}")
-            self._state["last_alert_time"] = latest_alert_time
+        if not self._is_poll_now and checkpoint_alert_time:
+            self._connector.debug_print(f"Checkpointing last alert time for DTM alerts: {checkpoint_alert_time}")
+            self._state["last_alert_time"] = checkpoint_alert_time
             self._connector.state = self._state
             self._connector.save_state(self._state)
+        if checkpoint_alert_time != latest_alert_time:
+            return self._action_result.set_status(phantom.APP_ERROR, "Failed to ingest all DTM alerts; preserved checkpoint for retry"), None
         return phantom.APP_SUCCESS, None
 
     def handle_polling_rs_events(self):
