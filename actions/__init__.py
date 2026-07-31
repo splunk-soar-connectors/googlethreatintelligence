@@ -26,5 +26,7 @@ class BaseAction:
         :param param: Parameter dictionary
         """
         self._connector = connector
-        self._action_result = connector.add_action_result(ActionResult(dict(param)))
+        persisted_param = dict(param)
+        persisted_param.pop("password", None)
+        self._action_result = connector.add_action_result(ActionResult(persisted_param))
         self._param = param

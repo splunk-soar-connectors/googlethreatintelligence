@@ -38,7 +38,12 @@ class UpdateAsmIssueStatus(BaseAction):
         self._connector.save_progress(consts.EXECUTION_START_MSG.format("update_asm_issue_status"))
 
         request_body = self.__get_request_body()
-        endpoint, method = consts.UPDATE_ASM_ISSUE_STATUS_ENDPOINT.format(id=self._param.get("id")), "post"
+        ret_val, issue_id = self._connector.util.validate_and_encode_path_segment(
+            self._action_result, self._param.get("id"), "ASM issue ID", r"[A-Za-z0-9_-]+"
+        )
+        if phantom.is_fail(ret_val):
+            return self._action_result.get_status()
+        endpoint, method = consts.UPDATE_ASM_ISSUE_STATUS_ENDPOINT.format(id=issue_id), "post"
 
         ret_val, response = self._make_rest_call(url=endpoint, method=method, body=request_body)
 

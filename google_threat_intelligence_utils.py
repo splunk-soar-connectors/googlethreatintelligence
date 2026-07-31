@@ -19,7 +19,7 @@ import json
 import re
 import time
 from datetime import UTC, datetime, timedelta
-from urllib.parse import urlencode, urlparse, urlunparse
+from urllib.parse import parse_qsl, quote, urlencode, urlparse, urlunparse
 
 import encryption_helper
 import phantom.app as phantom
@@ -46,6 +46,35 @@ class GoogleThreatIntelligenceUtils:
 
     def __init__(self, connector=None):
         self._connector = connector
+
+    @staticmethod
+    def validate_and_encode_path_segment(action_result, value, field_name, pattern):
+        """Validate an opaque identifier and encode it as one URL path segment."""
+        if not isinstance(value, str) or re.fullmatch(pattern, value) is None:
+            return action_result.set_status(phantom.APP_ERROR, f"Invalid {field_name}"), None
+        return phantom.APP_SUCCESS, quote(value, safe="")
+
+    @classmethod
+    def redact_captured_http_credentials(cls, value):
+        """Mask credentials captured in upstream HTTP-analysis data before persistence."""
+        if isinstance(value, list):
+            return [cls.redact_captured_http_credentials(item) for item in value]
+        if not isinstance(value, dict):
+            return value
+
+        sanitized = {}
+        for key, item in value.items():
+            if key == "last_http_response_cookies" and isinstance(item, dict):
+                sanitized[key] = {cookie_name: "***" for cookie_name in item}
+            elif key == "last_http_response_headers" and isinstance(item, dict):
+                sanitized_headers = dict(item)
+                for header_name in sanitized_headers:
+                    if header_name.lower() in {"authorization", "cookie", "proxy-authorization", "set-cookie"}:
+                        sanitized_headers[header_name] = "***"
+                sanitized[key] = sanitized_headers
+            else:
+                sanitized[key] = cls.redact_captured_http_credentials(item)
+        return sanitized
 
     def _get_error_message_from_exception(self, e):
         """
@@ -414,19 +443,29 @@ class GoogleThreatIntelligenceUtils:
             limit = 1000
 
         if limit is None:
+            page_count = 0
+            seen_cursors = set()
             while True:
+                if page_count >= consts.PAGINATION_MAX_PAGES:
+                    return action_result.set_status(phantom.APP_ERROR, "Pagination stopped after reaching the 500-page safety limit"), []
+
                 updated_endpoint = f"{endpoint}?limit=40" if "?" not in endpoint else f"{endpoint}&limit=40"
                 if cursor:
-                    updated_endpoint += f"&cursor={cursor}"
+                    updated_endpoint += f"&cursor={quote(cursor, safe='')}"
 
                 ret_val, json_resp = self.make_rest_call(updated_endpoint, action_result, method, **kwargs)
                 if phantom.is_fail(ret_val):
                     return ret_val, []
 
+                page_count += 1
                 results.extend(json_resp.get("data", []))
-                cursor = json_resp.get("meta", {}).get("cursor")
-                if not cursor:
+                next_cursor = json_resp.get("meta", {}).get("cursor")
+                if not next_cursor:
                     break
+                if next_cursor in seen_cursors:
+                    return action_result.set_status(phantom.APP_ERROR, "Pagination stopped because the API returned a repeated cursor"), []
+                seen_cursors.add(next_cursor)
+                cursor = next_cursor
         else:
             limit = int(limit)
             remaining = limit
@@ -486,10 +525,18 @@ class GoogleThreatIntelligenceUtils:
             self._connector.debug_print(f"The limit for DTM alerts ({limit}) is greater than the page size ({page_size}).")
             next_page_token = None
             remaining = limit
+            page_count = 0
+            max_pages = (limit + page_size - 1) // page_size + 2
+            seen_page_tokens = set()
             while remaining > 0:
+                if page_count >= max_pages:
+                    return action_result.set_status(phantom.APP_ERROR, "DTM pagination stopped after reaching its page safety limit"), []
+
                 if next_page_token:
                     parsed = urlparse(endpoint)
-                    new_query = urlencode({"page": next_page_token})
+                    query = [(key, value) for key, value in parse_qsl(parsed.query, keep_blank_values=True) if key != "page"]
+                    query.append(("page", next_page_token))
+                    new_query = urlencode(query)
                     updated = parsed._replace(query=new_query)
                     updated_endpoint = urlunparse(updated)
                 else:
@@ -501,6 +548,7 @@ class GoogleThreatIntelligenceUtils:
                 if phantom.is_fail(ret_val):
                     return ret_val, []
 
+                page_count += 1
                 alerts_list = json_resp.get("alerts", [])
                 alert_count = len(alerts_list)
                 if remaining <= alert_count:
@@ -522,7 +570,13 @@ class GoogleThreatIntelligenceUtils:
                     self._connector.debug_print("No page token found in the 'next' page link.")
                     break  # Break as there is no next page
 
-                next_page_token = m.group(1)
+                new_page_token = m.group(1)
+                if alert_count == 0:
+                    return action_result.set_status(phantom.APP_ERROR, "DTM pagination stopped because the API returned an empty page"), []
+                if new_page_token in seen_page_tokens:
+                    return action_result.set_status(phantom.APP_ERROR, "DTM pagination stopped because the API repeated a page token"), []
+                seen_page_tokens.add(new_page_token)
+                next_page_token = new_page_token
                 self._connector.debug_print(f"Remaining alerts to fetch: {remaining}")
             return phantom.APP_SUCCESS, results
 

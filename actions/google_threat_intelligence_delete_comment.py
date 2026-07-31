@@ -38,6 +38,11 @@ class DeleteComment(BaseAction):
         self._connector.save_progress(consts.EXECUTION_START_MSG.format("delete_comment"))
 
         comment_id = self._param.get("comment_id")
+        ret_val, comment_id = self._connector.util.validate_and_encode_path_segment(
+            self._action_result, comment_id, "comment ID", r"[a-z]-[A-Za-z0-9_=-]+-[0-9]+"
+        )
+        if phantom.is_fail(ret_val):
+            return self._action_result.get_status()
         endpoint, method = consts.DELETE_COMMENT_ENDPOINT.format(comment_id=comment_id), "delete"
 
         ret_val, response = self._make_rest_call(url=endpoint, method=method)

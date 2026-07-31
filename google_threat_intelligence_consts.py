@@ -118,6 +118,7 @@ PASS_ERROR_CODE = {
 }
 
 SEVERITY_MAPPING = {1: "High", 2: "High", 3: "Medium", 4: "Low", 5: "Low"}
+DTM_SEVERITY_MAPPING = {"high": "high", "medium": "medium", "low": "low"}
 
 # Map status of ASM issue to status of container
 ASM_STATUS_MAPPING = {
@@ -190,6 +191,7 @@ FILE = "files"
 
 RETRY_COUNT = 5
 RETRY_COUNT_PRIVATE_FILE_SCAN = 10
+PAGINATION_MAX_PAGES = 500
 
 # For action: update RS alert status
 UPDATE_RS_ALERT_STATUS_MAPPING = {
