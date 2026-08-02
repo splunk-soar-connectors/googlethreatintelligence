@@ -1,3 +1,4 @@
 **Unreleased**
 
 * Map DTM alert severities to enabled Splunk SOAR severities and fail up to the highest-ranked enabled severity for missing or unrecognized values.
+* Continue ingesting newer DTM alerts after an individual failure and retry missing artifacts in existing containers before advancing the checkpoint.

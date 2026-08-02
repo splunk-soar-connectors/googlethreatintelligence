@@ -468,6 +468,7 @@ class OnPoll(BaseAction):
 
         latest_alert_time = data[0].get("created_at")
         checkpoint_alert_time = None
+        ingest_failed = False
         for alert in reversed(data):
             alert_id = alert.get("id")
             alert_time = alert.get("created_at")
@@ -487,10 +488,13 @@ class OnPoll(BaseAction):
             ret_val, message, container_id = self._connector.save_container(container_data)
             if phantom.is_fail(ret_val):
                 self._connector.debug_print(f"Failed to create container: {message}")
-                break
+                ingest_failed = True
+                continue
             if message and message == "Duplicate container found":
-                self._connector.debug_print(f"Container already exists, skipping ingestion for alert: {alert_id}")
-                checkpoint_alert_time = alert_time
+                self._connector.debug_print(f"Container already exists; verifying artifact ingestion for alert: {alert_id}")
+            if not container_id:
+                self._connector.debug_print(f"No container ID returned for alert: {alert_id}")
+                ingest_failed = True
                 continue
             dtm_cef = self.__get_cef_dtm(alert)
             artifact_data = {
@@ -507,9 +511,11 @@ class OnPoll(BaseAction):
 
             if phantom.is_fail(ret_val):
                 self._connector.debug_print(f"Failed to create artifact: {message}")
-                break
-            checkpoint_alert_time = alert_time
-        else:
+                ingest_failed = True
+                continue
+            if not ingest_failed:
+                checkpoint_alert_time = alert_time
+        if not ingest_failed:
             checkpoint_alert_time = latest_alert_time
 
         if not self._is_poll_now and checkpoint_alert_time:
@@ -517,8 +523,11 @@ class OnPoll(BaseAction):
             self._state["last_alert_time"] = checkpoint_alert_time
             self._connector.state = self._state
             self._connector.save_state(self._state)
-        if checkpoint_alert_time != latest_alert_time:
-            return self._action_result.set_status(phantom.APP_ERROR, "Failed to ingest all DTM alerts; preserved checkpoint for retry"), None
+        if ingest_failed:
+            return self._action_result.set_status(
+                phantom.APP_ERROR,
+                "Failed to ingest one or more DTM alerts; preserved checkpoint for retry",
+            ), None
         return phantom.APP_SUCCESS, None
 
     def _get_dtm_severity_mapping(self):
