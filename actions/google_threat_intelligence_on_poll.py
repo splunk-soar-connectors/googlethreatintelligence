@@ -459,14 +459,23 @@ class OnPoll(BaseAction):
             self._connector.debug_print("No data found in response")
             return phantom.APP_SUCCESS, None
 
+        severity_mapping = self._get_dtm_severity_mapping()
+        if not severity_mapping:
+            return self._action_result.set_status(
+                phantom.APP_ERROR,
+                "Unable to resolve the enabled Splunk SOAR severity configuration",
+            ), None
+
         latest_alert_time = data[0].get("created_at")
         checkpoint_alert_time = None
+        ingest_failed = False
         for alert in reversed(data):
             alert_id = alert.get("id")
             alert_time = alert.get("created_at")
             alert_title = alert.get("title")
             alert_description = alert.get("alert_summary")
-            alert_severity = consts.DTM_SEVERITY_MAPPING.get(str(alert.get("severity", "")).lower(), "high")
+            provider_severity = str(alert.get("severity") or "").strip().lower()
+            alert_severity = severity_mapping.get(provider_severity, severity_mapping["high"])
             alert_status = alert.get("status")
             container_status = consts.DTM_STATUS_MAPPING.get(alert_status, "new")
             container_data = {
@@ -479,10 +488,13 @@ class OnPoll(BaseAction):
             ret_val, message, container_id = self._connector.save_container(container_data)
             if phantom.is_fail(ret_val):
                 self._connector.debug_print(f"Failed to create container: {message}")
-                break
+                ingest_failed = True
+                continue
             if message and message == "Duplicate container found":
-                self._connector.debug_print(f"Container already exists, skipping ingestion for alert: {alert_id}")
-                checkpoint_alert_time = alert_time
+                self._connector.debug_print(f"Container already exists; verifying artifact ingestion for alert: {alert_id}")
+            if not container_id:
+                self._connector.debug_print(f"No container ID returned for alert: {alert_id}")
+                ingest_failed = True
                 continue
             dtm_cef = self.__get_cef_dtm(alert)
             artifact_data = {
@@ -499,9 +511,11 @@ class OnPoll(BaseAction):
 
             if phantom.is_fail(ret_val):
                 self._connector.debug_print(f"Failed to create artifact: {message}")
-                break
-            checkpoint_alert_time = alert_time
-        else:
+                ingest_failed = True
+                continue
+            if not ingest_failed:
+                checkpoint_alert_time = alert_time
+        if not ingest_failed:
             checkpoint_alert_time = latest_alert_time
 
         if not self._is_poll_now and checkpoint_alert_time:
@@ -509,9 +523,45 @@ class OnPoll(BaseAction):
             self._state["last_alert_time"] = checkpoint_alert_time
             self._connector.state = self._state
             self._connector.save_state(self._state)
-        if checkpoint_alert_time != latest_alert_time:
-            return self._action_result.set_status(phantom.APP_ERROR, "Failed to ingest all DTM alerts; preserved checkpoint for retry"), None
+        if ingest_failed:
+            return self._action_result.set_status(
+                phantom.APP_ERROR,
+                "Failed to ingest one or more DTM alerts; preserved checkpoint for retry",
+            ), None
         return phantom.APP_SUCCESS, None
+
+    def _get_dtm_severity_mapping(self):
+        """Map provider severity levels onto the deployment's enabled severities."""
+        try:
+            url = f"{self._connector.get_phantom_base_url()}rest/severity?page_size=100&sort=order&order=asc"
+            response = requests.get(url, verify=ph_config.platform_strict_tls, timeout=30)
+            if response.status_code != 200:
+                self._connector.debug_print(f"Failed to query severities: HTTP {response.status_code}")
+                return None
+
+            configured_severities = [
+                severity for severity in response.json().get("data", []) if severity.get("name") and not severity.get("disabled", False)
+            ]
+        except Exception as e:
+            self._connector.debug_print(f"Error querying severities: {e!s}")
+            return None
+
+        if not configured_severities:
+            self._connector.debug_print("The deployment has no enabled severities")
+            return None
+
+        configured_severities.sort(key=lambda severity: severity.get("order", 0))
+        names_by_level = {str(severity["name"]).strip().lower(): severity["name"] for severity in configured_severities}
+        highest = configured_severities[0]["name"]
+        lowest = configured_severities[-1]["name"]
+        default = next((severity["name"] for severity in configured_severities if severity.get("is_default")), None)
+        middle = configured_severities[len(configured_severities) // 2]["name"]
+
+        return {
+            "high": names_by_level.get("high", highest),
+            "medium": names_by_level.get("medium", default or middle),
+            "low": names_by_level.get("low", lowest),
+        }
 
     def handle_polling_rs_events(self):
         """Handle polling for RS alerts using OAuth and the Google Threat Intelligence Alerts API.
@@ -902,6 +952,7 @@ class OnPoll(BaseAction):
             "Alert Type": alert.get("alert_type"),
             "Alert Title": alert.get("title"),
             "Alert Summary": alert.get("alert_summary"),
+            "Alert Severity": alert.get("severity"),
             "Alert Status": alert.get("status"),
             "AI Doc Summary": alert.get("ai_doc_summary"),
             "Aggregated Under ID": alert.get("aggregated_under_id"),

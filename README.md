@@ -93,6 +93,8 @@ ______________________________________________________________________
   | Medium | Medium |
   | Low | Low |
 
+  The connector matches these values to enabled Splunk SOAR severity names. If a stock name is not enabled, High maps to the highest-ranked enabled severity, Medium maps to the enabled default (or the middle-ranked severity if no default is identified), and Low maps to the lowest-ranked enabled severity. Missing and unrecognized DTM severity values map to the highest-ranked enabled severity.
+
 - **Container Creation:**\
   Each DTM alert will result in the creation of a separate container. One artifact will be created inside the container and will have certain important fields from alert visible inside the artifact. To get complete details about the alert, download the artifact JSON.
 
