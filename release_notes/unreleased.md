@@ -1,3 +1,1 @@
 **Unreleased**
-
-* Dictionary action parameters now require valid JSON; previously accepted single-quoted Python dictionary literals are rejected.
