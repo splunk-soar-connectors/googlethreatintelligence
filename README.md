@@ -436,7 +436,6 @@ action_result.summary | string | | |
 action_result.message | string | | Action has been executed successfully |
 summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
-action_result.parameter.password | password | | |
 
 ## action: 'get ioc report'
 
@@ -1505,7 +1504,6 @@ action_result.summary | string | | |
 action_result.message | string | | Action has been executed successfully |
 summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
-action_result.parameter.password | password | | |
 
 ## action: 'get comments'
 
@@ -1548,7 +1546,6 @@ action_result.summary | string | | |
 action_result.message | string | | Action has been executed successfully |
 summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
-action_result.parameter.password | password | | |
 
 ## action: 'get vulnerability associations'
 
@@ -1832,7 +1829,6 @@ action_result.summary | string | | |
 action_result.message | string | | Action has been executed successfully |
 summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
-action_result.parameter.password | password | | |
 
 ## action: 'get file sandbox report'
 
@@ -1923,7 +1919,6 @@ action_result.summary | string | | |
 action_result.message | string | | Action has been executed successfully |
 summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
-action_result.parameter.password | password | | |
 
 ## action: 'scan private url'
 
@@ -3092,7 +3087,6 @@ action_result.summary | string | | |
 action_result.message | string | | Action has been executed successfully |
 summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
-action_result.parameter.password | password | | |
 
 ## action: 'add comment'
 
@@ -3131,7 +3125,6 @@ action_result.summary | string | | |
 action_result.message | string | | Action has been executed successfully |
 summary.total_objects | numeric | | 1 |
 summary.total_objects_successful | numeric | | 1 |
-action_result.parameter.password | password | | |
 
 ## action: 'delete comment'
 

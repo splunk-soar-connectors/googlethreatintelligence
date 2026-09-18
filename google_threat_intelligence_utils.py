@@ -1292,18 +1292,15 @@ class Validator:
             tuple[int, dict|None]: A tuple containing the status of the validation and the valid parameter value.
         """
         try:
-            parameter = json.loads(parameter.replace("'", "'"))
-        except Exception:
-            try:
-                parameter = eval(parameter)
-            except Exception:
-                return (
-                    action_result.set_status(
-                        phantom.APP_ERROR,
-                        consts.ERROR_INVALID_JSON_PARAM.format(key=key),
-                    ),
-                    None,
-                )
+            parameter = json.loads(parameter)
+        except (TypeError, json.JSONDecodeError):
+            return (
+                action_result.set_status(
+                    phantom.APP_ERROR,
+                    consts.ERROR_INVALID_JSON_PARAM.format(key=key),
+                ),
+                None,
+            )
 
         if not isinstance(parameter, dict):
             return (
@@ -1327,14 +1324,14 @@ class Validator:
             tuple[int, list|None]: A tuple containing the status of the validation and the valid parameter value.
         """
         try:
-            parameter = json.loads(parameter.replace("'", "'"))
-        except Exception:
-            try:
-                parameter = eval(parameter)
-                if isinstance(parameter, tuple):
-                    parameter = list(parameter)
-            except Exception:
-                parameter = [result for value in parameter.split(",") if (result := value.strip())]
+            parameter = json.loads(parameter)
+        except (TypeError, json.JSONDecodeError):
+            if not isinstance(parameter, str):
+                return (
+                    action_result.set_status(phantom.APP_ERROR, consts.ERROR_INVALID_LIST_PARAM.format(key=key)),
+                    None,
+                )
+            parameter = [result for value in parameter.split(",") if (result := value.strip())]
 
         if not isinstance(parameter, list):
             return (
